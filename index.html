@@ -16,8 +16,8 @@
     body { background: #f1f5f9; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     .nav-btn { color: #94a3b8; border-top: 2px solid transparent; transition: color 0.15s; }
     .nav-btn.active { color: #3b82f6; border-top: 2px solid #3b82f6; }
-    input, select { background: #fff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
-    input::placeholder { color: #94a3b8 !important; }
+    input, select, textarea { background: #fff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+    input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
     .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .btn-primary { background: #3b82f6; color: #fff; }
     .btn-primary:active { background: #2563eb; }
@@ -27,22 +27,29 @@
     .content { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     .header { background: #fff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 40; }
     .badge { background: #eff6ff; color: #3b82f6; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+    .badge-green { background: #f0fdf4; color: #16a34a; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
     .exercise-chip { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; padding: 5px 13px; font-size: 13px; cursor: pointer; display: inline-block; margin: 3px; color: #475569; }
     .exercise-chip:active { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
     .fade-in { animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     ::-webkit-scrollbar { display: none; }
-    /* Calendar */
     .cal-day { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; }
     .cal-day.has-workout { background: #3b82f6; color: #fff; font-weight: 700; }
     .cal-day.today { border: 2px solid #3b82f6; }
     .cal-day.today.has-workout { border-color: #1d4ed8; }
     .cal-day.other-month { color: #cbd5e1; }
     .cal-day:active { opacity: 0.7; }
+    .type-btn { flex: 1; padding: 7px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1.5px solid #e2e8f0; color: #94a3b8; background: #f8fafc; transition: all 0.15s; }
+    .type-btn.active-strength { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+    .type-btn.active-duration { border-color: #10b981; color: #10b981; background: #f0fdf4; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 60; display: flex; align-items: flex-end; }
+    .modal-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-height: 85vh; overflow-y: auto; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); }
+    .day-pill { border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid #e2e8f0; color: #94a3b8; background: #f8fafc; }
+    .day-pill.active { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+    .schedule-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
   </style>
 </head>
 <body>
-
 <div id="app">
   <div class="header px-4 py-3 flex items-center justify-between">
     <h1 class="text-lg font-bold text-gray-800">💪 筋トレ記録</h1>
@@ -63,28 +70,113 @@
     </div>
   </div>
 
+  <!-- テンプレート選択モーダル -->
+  <div id="template-select-modal" class="hidden modal-overlay" onclick="if(event.target===this)hideTemplateSelect()">
+    <div class="modal-sheet">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-800">テンプレートを選択</h3>
+        <button onclick="hideTemplateSelect()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div id="template-select-list"></div>
+    </div>
+  </div>
+
+  <!-- テンプレート編集モーダル -->
+  <div id="template-edit-modal" class="hidden modal-overlay" onclick="if(event.target===this)hideTemplateEdit()">
+    <div class="modal-sheet">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="template-edit-title" class="font-bold text-gray-800">テンプレートを作成</h3>
+        <button onclick="hideTemplateEdit()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div class="mb-4">
+        <label class="text-xs text-gray-400 mb-1 block">テンプレート名</label>
+        <input id="template-name-input" type="text" placeholder="例：肩の日、ピラティス" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+      </div>
+      <div class="mb-3">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-xs text-gray-400">種目リスト</label>
+        </div>
+        <div id="template-exercise-list" class="mb-2"></div>
+        <div class="flex gap-2 mb-1">
+          <input id="template-ex-input" type="text" placeholder="種目名" class="flex-1 rounded-xl px-3 py-2 text-sm border outline-none" />
+          <select id="template-ex-type" class="rounded-xl px-2 py-2 text-sm border outline-none">
+            <option value="strength">重量×回数</option>
+            <option value="duration">時間（分）</option>
+          </select>
+        </div>
+        <button onclick="addTemplateExercise()" class="w-full py-2 rounded-xl text-sm text-blue-500 border border-blue-200 bg-blue-50 mt-1">+ 種目を追加</button>
+      </div>
+      <div class="mb-4">
+        <label class="text-xs text-gray-400 mb-2 block">週間スケジュール（この曜日に自動提案）</label>
+        <div class="flex gap-1 flex-wrap" id="template-days">
+          <span class="day-pill" data-day="0" onclick="toggleTemplateDay(0)">日</span>
+          <span class="day-pill" data-day="1" onclick="toggleTemplateDay(1)">月</span>
+          <span class="day-pill" data-day="2" onclick="toggleTemplateDay(2)">火</span>
+          <span class="day-pill" data-day="3" onclick="toggleTemplateDay(3)">水</span>
+          <span class="day-pill" data-day="4" onclick="toggleTemplateDay(4)">木</span>
+          <span class="day-pill" data-day="5" onclick="toggleTemplateDay(5)">金</span>
+          <span class="day-pill" data-day="6" onclick="toggleTemplateDay(6)">土</span>
+        </div>
+      </div>
+      <button onclick="saveTemplate()" class="btn-primary w-full py-3 rounded-xl font-bold">保存</button>
+    </div>
+  </div>
+
   <!-- 記録タブ -->
   <div id="tab-record" class="content px-4 pt-4 hidden">
+    <!-- 今日のスケジュール -->
+    <div id="schedule-banner" class="hidden card p-3 mb-4 border-blue-200 bg-blue-50">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="text-xs text-blue-400 mb-0.5">今日のメニュー</div>
+          <div id="schedule-banner-name" class="font-semibold text-blue-700"></div>
+        </div>
+        <button id="schedule-banner-btn" onclick="applyScheduledTemplate()" class="btn-primary text-sm px-3 py-1.5 rounded-lg font-semibold">適用</button>
+      </div>
+    </div>
+
     <div class="card p-4 mb-4">
       <div class="flex justify-between items-center mb-3">
         <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">種目を選択 / 入力</h2>
-        <button onclick="toggleEditExercises()" id="edit-exercises-btn" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+        <div class="flex gap-1">
+          <button onclick="showTemplateSelect()" class="text-xs text-purple-500 border border-purple-200 bg-purple-50 rounded-lg px-2 py-1">テンプレ</button>
+          <button onclick="toggleEditExercises()" id="edit-exercises-btn" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+        </div>
       </div>
       <div id="quick-exercises" class="mb-3"></div>
       <input id="exercise-input" type="text" placeholder="種目名を入力..." class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none mb-3" />
+
+      <!-- 種別トグル -->
       <div class="flex gap-2 mb-3">
-        <div class="flex-1">
-          <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
-          <div class="flex gap-1">
-            <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
-            <button id="bodyweight-btn" onclick="toggleBodyweight()" class="rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">自重</button>
+        <button id="type-strength" onclick="setActivityType('strength')" class="type-btn active-strength">🏋️ 重量×回数</button>
+        <button id="type-duration" onclick="setActivityType('duration')" class="type-btn">⏱ 時間（分）</button>
+      </div>
+
+      <!-- 筋トレ入力 -->
+      <div id="input-strength">
+        <div class="flex gap-2 mb-3">
+          <div class="flex-1">
+            <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
+            <div class="flex gap-1">
+              <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+              <button id="bodyweight-btn" onclick="toggleBodyweight()" class="rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">自重</button>
+            </div>
+          </div>
+          <div class="flex-1">
+            <label class="text-xs text-gray-400 mb-1 block">回数 (rep)</label>
+            <input id="reps-input" type="number" inputmode="numeric" placeholder="10" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
           </div>
         </div>
-        <div class="flex-1">
-          <label class="text-xs text-gray-400 mb-1 block">回数 (rep)</label>
-          <input id="reps-input" type="number" inputmode="numeric" placeholder="10" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+      </div>
+
+      <!-- 時間入力 -->
+      <div id="input-duration" class="hidden">
+        <div class="mb-3">
+          <label class="text-xs text-gray-400 mb-1 block">時間（分）</label>
+          <input id="duration-input" type="number" inputmode="numeric" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
         </div>
       </div>
+
       <button onclick="addSet()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">+ セットを追加</button>
     </div>
     <div id="today-sets" class="mb-4"></div>
@@ -95,7 +187,6 @@
 
   <!-- 履歴タブ -->
   <div id="tab-history" class="content px-4 pt-4 hidden">
-    <!-- 統計 -->
     <div class="grid grid-cols-2 gap-3 mb-4">
       <div class="card p-3 text-center">
         <div id="stat-total" class="text-2xl font-bold text-blue-500">0</div>
@@ -106,7 +197,6 @@
         <div id="stat-month-label" class="text-xs text-gray-400 mt-1">今月の日数</div>
       </div>
     </div>
-    <!-- カレンダー -->
     <div class="card p-4 mb-4">
       <div class="flex items-center justify-between mb-3">
         <button onclick="prevMonth()" class="text-gray-400 text-lg px-2">‹</button>
@@ -124,8 +214,6 @@
       </div>
       <div id="cal-grid" class="grid grid-cols-7 gap-y-1 justify-items-center"></div>
     </div>
-
-    <!-- 選択日の詳細 / 全履歴 -->
     <div class="flex justify-between items-center mb-3">
       <h2 id="history-subtitle" class="text-sm font-semibold text-gray-600">全記録</h2>
       <span id="history-count" class="badge">0件</span>
@@ -140,9 +228,9 @@
         <label class="text-xs text-gray-400 mb-1 block">種目</label>
         <select id="chart-exercise" onchange="updateChart()" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none"></select>
       </div>
-      <div>
+      <div id="chart-metric-section">
         <label class="text-xs text-gray-400 mb-1 block">指標</label>
-        <div class="flex gap-2">
+        <div class="flex gap-2" id="chart-metric-btns">
           <button onclick="setMetric('maxWeight')" id="metric-maxWeight" class="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">最大重量</button>
           <button onclick="setMetric('totalVolume')" id="metric-totalVolume" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">総ボリューム</button>
           <button onclick="setMetric('maxReps')" id="metric-maxReps" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">最大回数</button>
@@ -155,24 +243,42 @@
     <div id="chart-stats" class="grid grid-cols-3 gap-3"></div>
   </div>
 
+  <!-- テンプレートタブ -->
+  <div id="tab-template" class="content px-4 pt-4 hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-base font-semibold text-gray-700">テンプレート</h2>
+      <button onclick="showTemplateEdit(null)" class="btn-primary text-sm px-3 py-1.5 rounded-xl font-semibold">＋ 新規</button>
+    </div>
+    <div id="template-list"></div>
+
+    <div class="card p-4 mt-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-3">📅 週間スケジュール</h3>
+      <div id="schedule-list"></div>
+      <p class="text-xs text-gray-400 mt-3">テンプレート作成時に曜日を設定すると、その曜日に自動提案されます。</p>
+    </div>
+  </div>
+
   <!-- ナビゲーション -->
   <div class="tab-bar">
     <div class="flex justify-around pt-2 pb-1">
-      <button onclick="showTab('record')" id="nav-record" class="nav-btn active flex flex-col items-center gap-0.5 px-4 pt-1 pb-2 text-xs font-medium">
+      <button onclick="showTab('record')" id="nav-record" class="nav-btn active flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">✏️</span>記録
       </button>
-      <button onclick="showTab('history')" id="nav-history" class="nav-btn flex flex-col items-center gap-0.5 px-4 pt-1 pb-2 text-xs font-medium">
+      <button onclick="showTab('history')" id="nav-history" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">📅</span>履歴
       </button>
-      <button onclick="showTab('chart')" id="nav-chart" class="nav-btn flex flex-col items-center gap-0.5 px-4 pt-1 pb-2 text-xs font-medium">
+      <button onclick="showTab('chart')" id="nav-chart" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">📈</span>グラフ
+      </button>
+      <button onclick="showTab('template')" id="nav-template" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
+        <span class="text-xl">📋</span>テンプレ
       </button>
     </div>
   </div>
 </div>
 
 <script>
-// --- State ---
+// ===== STATE =====
 let currentSets = [];
 let chartInstance = null;
 let currentMetric = 'maxWeight';
@@ -180,15 +286,24 @@ let calYear, calMonth;
 let selectedDate = null;
 let isBodyweight = false;
 let isEditingExercises = false;
+let currentActivityType = 'strength';
+let editingTemplateId = null;
+let editingTemplateExercises = [];
+let editingTemplateDays = [];
 
+// ===== KEYS =====
 const EXERCISES_KEY = 'wt_exercises';
 const WORKOUTS_KEY = 'wt_workouts';
 const HIDDEN_EXERCISES_KEY = 'wt_hidden_exercises';
+const TEMPLATES_KEY = 'wt_templates';
 const DEFAULT_EXERCISES = ['ベンチプレス','スクワット','デッドリフト','ショルダープレス','懸垂','ローイング','アームカール','トライセプス','レッグプレス','ラットプルダウン'];
+const DAY_NAMES = ['日','月','火','水','木','金','土'];
 
+// ===== STORAGE =====
 function getData(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function setData(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+// ===== EXERCISES =====
 function getExercises() {
   const hidden = getData(HIDDEN_EXERCISES_KEY);
   return [...new Set([...DEFAULT_EXERCISES, ...getData(EXERCISES_KEY)])].filter(e => !hidden.includes(e));
@@ -196,7 +311,6 @@ function getExercises() {
 function addExerciseToList(name) {
   const saved = getData(EXERCISES_KEY);
   if (!saved.includes(name) && !DEFAULT_EXERCISES.includes(name)) setData(EXERCISES_KEY, [...saved, name]);
-  // 非表示リストから戻す
   const hidden = getData(HIDDEN_EXERCISES_KEY);
   if (hidden.includes(name)) setData(HIDDEN_EXERCISES_KEY, hidden.filter(h => h !== name));
 }
@@ -215,6 +329,7 @@ function toggleEditExercises() {
   renderQuickExercises();
 }
 
+// ===== DATE =====
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -225,34 +340,63 @@ function formatDate(dateStr) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
   if (dateStr === today) return '今日';
   if (dateStr === yesterday) return '昨日';
-  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${['日','月','火','水','木','金','土'][d.getDay()]})`;
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`;
 }
 
-// --- QR ---
+// ===== QR =====
 function showQR() {
   const url = window.location.href.split('?')[0];
   document.getElementById('qr-url').textContent = url;
   document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
   document.getElementById('qr-modal').classList.remove('hidden');
 }
-function hideQR() {
-  document.getElementById('qr-modal').classList.add('hidden');
-}
+function hideQR() { document.getElementById('qr-modal').classList.add('hidden'); }
 
-// --- Tab ---
+// ===== TAB =====
 function showTab(tab) {
-  ['record','history','chart'].forEach(t => {
+  ['record','history','chart','template'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.add('hidden');
     document.getElementById(`nav-${t}`).classList.remove('active');
   });
   document.getElementById(`tab-${tab}`).classList.remove('hidden');
   document.getElementById(`nav-${tab}`).classList.add('active');
-  if (tab === 'record') renderQuickExercises();
+  if (tab === 'record') { renderQuickExercises(); checkSchedule(); }
   if (tab === 'history') { selectedDate = null; renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
+  if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
 }
 
-// --- Record ---
+// ===== ACTIVITY TYPE =====
+function setActivityType(type) {
+  currentActivityType = type;
+  document.getElementById('input-strength').classList.toggle('hidden', type !== 'strength');
+  document.getElementById('input-duration').classList.toggle('hidden', type !== 'duration');
+  document.getElementById('type-strength').className = `type-btn ${type === 'strength' ? 'active-strength' : ''}`;
+  document.getElementById('type-duration').className = `type-btn ${type === 'duration' ? 'active-duration' : ''}`;
+  if (type === 'strength') {
+    isBodyweight = false;
+    const btn = document.getElementById('bodyweight-btn');
+    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';
+    const wi = document.getElementById('weight-input');
+    wi.disabled = false; wi.style.opacity = '1';
+  }
+}
+
+// ===== BODYWEIGHT =====
+function toggleBodyweight() {
+  isBodyweight = !isBodyweight;
+  const btn = document.getElementById('bodyweight-btn');
+  const wi = document.getElementById('weight-input');
+  if (isBodyweight) {
+    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-blue-400 text-blue-600 bg-blue-50 whitespace-nowrap font-semibold';
+    wi.value = ''; wi.disabled = true; wi.style.opacity = '0.4';
+  } else {
+    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';
+    wi.disabled = false; wi.style.opacity = '1';
+  }
+}
+
+// ===== RECORD =====
 function renderQuickExercises() {
   const exercises = getExercises();
   document.getElementById('quick-exercises').innerHTML = exercises.map(ex =>
@@ -263,40 +407,29 @@ function renderQuickExercises() {
 }
 function selectExercise(name) { document.getElementById('exercise-input').value = name; }
 
-function toggleBodyweight() {
-  isBodyweight = !isBodyweight;
-  const btn = document.getElementById('bodyweight-btn');
-  const weightInput = document.getElementById('weight-input');
-  if (isBodyweight) {
-    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-blue-400 text-blue-600 bg-blue-50 whitespace-nowrap font-semibold';
-    weightInput.value = '';
-    weightInput.disabled = true;
-    weightInput.style.opacity = '0.4';
-  } else {
-    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';
-    weightInput.disabled = false;
-    weightInput.style.opacity = '1';
-  }
-}
-
 function addSet() {
   const exercise = document.getElementById('exercise-input').value.trim();
-  const weight = parseFloat(document.getElementById('weight-input').value);
-  const reps = parseInt(document.getElementById('reps-input').value);
   if (!exercise) { alert('種目を入力してください'); return; }
-  if (!isBodyweight && (isNaN(weight) || weight <= 0)) { alert('重量を入力するか「自重」を選択してください'); return; }
-  if (isNaN(reps) || reps <= 0) { alert('回数を入力してください'); return; }
-  currentSets.push({ exercise, weight: isBodyweight ? null : weight, bodyweight: isBodyweight, reps, id: Date.now() });
+
+  if (currentActivityType === 'duration') {
+    const duration = parseInt(document.getElementById('duration-input').value);
+    if (isNaN(duration) || duration <= 0) { alert('時間を入力してください'); return; }
+    currentSets.push({ exercise, type: 'duration', duration, id: Date.now() });
+    document.getElementById('duration-input').value = '';
+  } else {
+    const weight = parseFloat(document.getElementById('weight-input').value);
+    const reps = parseInt(document.getElementById('reps-input').value);
+    if (!isBodyweight && (isNaN(weight) || weight <= 0)) { alert('重量を入力するか「自重」を選択してください'); return; }
+    if (isNaN(reps) || reps <= 0) { alert('回数を入力してください'); return; }
+    currentSets.push({ exercise, type: 'strength', weight: isBodyweight ? null : weight, bodyweight: isBodyweight, reps, id: Date.now() });
+    document.getElementById('reps-input').value = '';
+    document.getElementById('reps-input').focus();
+  }
   addExerciseToList(exercise);
   renderTodaySets();
-  document.getElementById('reps-input').value = '';
-  document.getElementById('reps-input').focus();
 }
 
-function removeSet(id) {
-  currentSets = currentSets.filter(s => s.id !== id);
-  renderTodaySets();
-}
+function removeSet(id) { currentSets = currentSets.filter(s => s.id !== id); renderTodaySets(); }
 
 function renderTodaySets() {
   const container = document.getElementById('today-sets');
@@ -309,12 +442,12 @@ function renderTodaySets() {
     <div class="card p-4 mb-3 fade-in">
       <div class="flex justify-between items-center mb-2">
         <span class="font-semibold text-gray-800">${ex}</span>
-        <span class="badge">${sets.length}セット</span>
+        <span class="${sets[0].type === 'duration' ? 'badge-green' : 'badge'}">${sets[0].type === 'duration' ? '時間' : sets.length+'セット'}</span>
       </div>
       ${sets.map((s, i) => `
         <div class="set-row flex justify-between items-center">
-          <span class="text-sm text-gray-400">${i+1}セット目</span>
-          <span class="text-sm font-medium text-gray-700">${s.bodyweight ? '自重' : s.weight+'kg'} × ${s.reps}回</span>
+          <span class="text-sm text-gray-400">${s.type === 'duration' ? '' : i+1+'セット目'}</span>
+          <span class="text-sm font-medium text-gray-700">${s.type === 'duration' ? s.duration+'分' : (s.bodyweight ? '自重' : s.weight+'kg') + ' × ' + s.reps+'回'}</span>
           <button onclick="removeSet(${s.id})" class="text-red-400 text-xs ml-2 py-1 px-2">✕</button>
         </div>
       `).join('')}
@@ -329,54 +462,217 @@ function saveWorkout() {
   setData(WORKOUTS_KEY, workouts);
   currentSets = [];
   renderTodaySets();
-  ['exercise-input','weight-input','reps-input'].forEach(id => document.getElementById(id).value = '');
+  ['exercise-input','weight-input','reps-input','duration-input'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const btn = document.querySelector('#save-section button');
-  btn.textContent = '✓ 保存しました！';
-  btn.style.opacity = '0.7';
+  btn.textContent = '✓ 保存しました！'; btn.style.opacity = '0.7';
   setTimeout(() => { btn.textContent = '記録を保存'; btn.style.opacity = '1'; }, 2000);
 }
 
-// --- Stats ---
+// ===== SCHEDULE =====
+function checkSchedule() {
+  const today = new Date().getDay();
+  const templates = getData(TEMPLATES_KEY);
+  const scheduled = templates.find(t => t.days && t.days.includes(today));
+  const banner = document.getElementById('schedule-banner');
+  if (scheduled) {
+    document.getElementById('schedule-banner-name').textContent = scheduled.name;
+    document.getElementById('schedule-banner-btn').onclick = () => applyTemplate(scheduled);
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+function applyScheduledTemplate() {
+  const today = new Date().getDay();
+  const templates = getData(TEMPLATES_KEY);
+  const scheduled = templates.find(t => t.days && t.days.includes(today));
+  if (scheduled) applyTemplate(scheduled);
+}
+function applyTemplate(template) {
+  template.exercises.forEach(ex => {
+    document.getElementById('exercise-input').value = ex.name;
+    addExerciseToList(ex.name);
+  });
+  document.getElementById('exercise-input').value = template.exercises.length > 0 ? template.exercises[0].name : '';
+  if (template.exercises.length > 0) {
+    setActivityType(template.exercises[0].type || 'strength');
+  }
+  document.getElementById('schedule-banner').classList.add('hidden');
+}
+
+// ===== TEMPLATE SELECT =====
+function showTemplateSelect() {
+  const templates = getData(TEMPLATES_KEY);
+  const list = document.getElementById('template-select-list');
+  if (templates.length === 0) {
+    list.innerHTML = '<p class="text-center text-gray-400 py-6 text-sm">テンプレートがありません。<br>テンプレートタブから作成してください。</p>';
+  } else {
+    list.innerHTML = templates.map(t => `
+      <div class="card p-4 mb-3 cursor-pointer" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')});hideTemplateSelect()">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="font-semibold text-gray-800">${t.name}</div>
+            <div class="text-xs text-gray-400 mt-1">${t.exercises.map(e=>e.name).join(' · ')}</div>
+          </div>
+          <span class="text-blue-400">→</span>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('template-select-modal').classList.remove('hidden');
+}
+function hideTemplateSelect() { document.getElementById('template-select-modal').classList.add('hidden'); }
+
+// ===== TEMPLATE CRUD =====
+function showTemplateEdit(id) {
+  editingTemplateId = id;
+  editingTemplateExercises = [];
+  editingTemplateDays = [];
+  document.getElementById('template-edit-title').textContent = id ? 'テンプレートを編集' : 'テンプレートを作成';
+  if (id) {
+    const templates = getData(TEMPLATES_KEY);
+    const t = templates.find(t => t.id === id);
+    if (t) {
+      document.getElementById('template-name-input').value = t.name;
+      editingTemplateExercises = [...t.exercises];
+      editingTemplateDays = [...(t.days || [])];
+    }
+  } else {
+    document.getElementById('template-name-input').value = '';
+  }
+  renderTemplateEditExercises();
+  renderTemplateEditDays();
+  document.getElementById('template-edit-modal').classList.remove('hidden');
+}
+function hideTemplateEdit() { document.getElementById('template-edit-modal').classList.add('hidden'); }
+
+function addTemplateExercise() {
+  const name = document.getElementById('template-ex-input').value.trim();
+  const type = document.getElementById('template-ex-type').value;
+  if (!name) return;
+  editingTemplateExercises.push({ name, type });
+  document.getElementById('template-ex-input').value = '';
+  renderTemplateEditExercises();
+}
+function removeTemplateExercise(i) {
+  editingTemplateExercises.splice(i, 1);
+  renderTemplateEditExercises();
+}
+function renderTemplateEditExercises() {
+  document.getElementById('template-exercise-list').innerHTML = editingTemplateExercises.map((ex, i) => `
+    <div class="flex justify-between items-center bg-gray-50 rounded-xl px-3 py-2 mb-1">
+      <span class="text-sm text-gray-700">${ex.name}</span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs ${ex.type === 'duration' ? 'text-green-500' : 'text-blue-400'}">${ex.type === 'duration' ? '⏱ 時間' : '🏋️ 重量'}</span>
+        <button onclick="removeTemplateExercise(${i})" class="text-red-400 text-sm">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleTemplateDay(day) {
+  const idx = editingTemplateDays.indexOf(day);
+  if (idx >= 0) editingTemplateDays.splice(idx, 1);
+  else editingTemplateDays.push(day);
+  renderTemplateEditDays();
+}
+function renderTemplateEditDays() {
+  document.querySelectorAll('#template-days .day-pill').forEach(el => {
+    const d = parseInt(el.dataset.day);
+    el.className = `day-pill ${editingTemplateDays.includes(d) ? 'active' : ''}`;
+  });
+}
+function saveTemplate() {
+  const name = document.getElementById('template-name-input').value.trim();
+  if (!name) { alert('テンプレート名を入力してください'); return; }
+  if (editingTemplateExercises.length === 0) { alert('種目を1つ以上追加してください'); return; }
+  const templates = getData(TEMPLATES_KEY);
+  if (editingTemplateId) {
+    const idx = templates.findIndex(t => t.id === editingTemplateId);
+    if (idx >= 0) templates[idx] = { id: editingTemplateId, name, exercises: editingTemplateExercises, days: editingTemplateDays };
+  } else {
+    templates.push({ id: Date.now(), name, exercises: editingTemplateExercises, days: editingTemplateDays });
+  }
+  setData(TEMPLATES_KEY, templates);
+  hideTemplateEdit();
+  renderTemplateList();
+  renderScheduleList();
+}
+function deleteTemplate(id) {
+  if (!confirm('このテンプレートを削除しますか？')) return;
+  const templates = getData(TEMPLATES_KEY).filter(t => t.id !== id);
+  setData(TEMPLATES_KEY, templates);
+  renderTemplateList();
+  renderScheduleList();
+}
+function renderTemplateList() {
+  const templates = getData(TEMPLATES_KEY);
+  const container = document.getElementById('template-list');
+  if (templates.length === 0) {
+    container.innerHTML = `<div class="text-center py-10 text-gray-400"><div class="text-4xl mb-3">📋</div><p class="text-sm">テンプレートがありません</p></div>`;
+    return;
+  }
+  container.innerHTML = templates.map(t => `
+    <div class="card p-4 mb-3 fade-in">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-semibold text-gray-800">${t.name}</span>
+        <div class="flex gap-2">
+          <button onclick="showTemplateEdit(${t.id})" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+          <button onclick="deleteTemplate(${t.id})" class="text-xs text-red-400 border border-red-100 bg-red-50 rounded-lg px-2 py-1">削除</button>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-1 mb-2">
+        ${t.exercises.map(ex => `<span class="text-xs px-2 py-0.5 rounded-full ${ex.type==='duration' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-500'}">${ex.name}</span>`).join('')}
+      </div>
+      ${t.days && t.days.length > 0 ? `<div class="text-xs text-gray-400">📅 ${t.days.sort().map(d=>DAY_NAMES[d]+'曜').join('・')}</div>` : ''}
+    </div>
+  `).join('');
+}
+function renderScheduleList() {
+  const templates = getData(TEMPLATES_KEY);
+  const container = document.getElementById('schedule-list');
+  const scheduled = templates.filter(t => t.days && t.days.length > 0);
+  if (scheduled.length === 0) {
+    container.innerHTML = '<p class="text-sm text-gray-400">スケジュール未設定</p>';
+    return;
+  }
+  const byDay = {};
+  scheduled.forEach(t => t.days.forEach(d => { if (!byDay[d]) byDay[d] = []; byDay[d].push(t.name); }));
+  container.innerHTML = [0,1,2,3,4,5,6].filter(d => byDay[d]).map(d => `
+    <div class="schedule-row">
+      <span class="text-sm font-medium text-gray-600">${DAY_NAMES[d]}曜日</span>
+      <span class="text-sm text-blue-500">${byDay[d].join(' / ')}</span>
+    </div>
+  `).join('');
+}
+
+// ===== STATS =====
 function renderStats() {
   const workouts = getData(WORKOUTS_KEY);
   const uniqueDays = new Set(workouts.map(w => w.date));
-  const totalDays = uniqueDays.size;
-
+  document.getElementById('stat-total').textContent = uniqueDays.size;
   const y = calYear !== undefined ? calYear : new Date().getFullYear();
   const m = calMonth !== undefined ? calMonth : new Date().getMonth();
   const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
   const monthDays = [...uniqueDays].filter(d => d.startsWith(monthStr)).length;
-
-  document.getElementById('stat-total').textContent = totalDays;
   document.getElementById('stat-month').textContent = monthDays;
   document.getElementById('stat-month-label').textContent = `${y}年${m+1}月の日数`;
 }
 
-// --- Calendar ---
+// ===== CALENDAR =====
 function renderCalendar() {
   const now = new Date();
   if (calYear === undefined) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
   const workouts = getData(WORKOUTS_KEY);
   const workoutDates = new Set(workouts.map(w => w.date));
   const todayISO = todayStr();
-
   document.getElementById('cal-title').textContent = `${calYear}年${calMonth+1}月`;
-
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
   const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
-
   let cells = [];
-  for (let i = firstDay - 1; i >= 0; i--) {
-    cells.push({ day: daysInPrevMonth - i, thisMonth: false });
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, thisMonth: true });
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push({ day: cells.length - firstDay - daysInMonth + 1, thisMonth: false });
-  }
-
+  for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrevMonth - i, thisMonth: false });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, thisMonth: true });
+  while (cells.length % 7 !== 0) cells.push({ day: cells.length - firstDay - daysInMonth + 1, thisMonth: false });
   document.getElementById('cal-grid').innerHTML = cells.map(c => {
     const dateStr = c.thisMonth ? `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}` : '';
     const hasWorkout = dateStr && workoutDates.has(dateStr);
@@ -391,65 +687,36 @@ function renderCalendar() {
     return `<div class="${cls}" ${onclick}>${c.day}</div>`;
   }).join('');
 }
+function prevMonth() { calMonth--; if (calMonth<0){calMonth=11;calYear--;} selectedDate=null; renderCalendar(); renderStats(); renderHistory(); }
+function nextMonth() { calMonth++; if (calMonth>11){calMonth=0;calYear++;} selectedDate=null; renderCalendar(); renderStats(); renderHistory(); }
+function selectCalDay(dateStr) { selectedDate = selectedDate===dateStr ? null : dateStr; renderCalendar(); renderHistory(); }
 
-function prevMonth() {
-  calMonth--;
-  if (calMonth < 0) { calMonth = 11; calYear--; }
-  selectedDate = null;
-  renderCalendar();
-  renderStats();
-  renderHistory();
-}
-function nextMonth() {
-  calMonth++;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  selectedDate = null;
-  renderCalendar();
-  renderStats();
-  renderHistory();
-}
-function selectCalDay(dateStr) {
-  selectedDate = selectedDate === dateStr ? null : dateStr;
-  renderCalendar();
-  renderHistory();
-}
-
-// --- History ---
+// ===== HISTORY =====
 function renderHistory() {
   const allWorkouts = getData(WORKOUTS_KEY);
-  let workouts;
-  if (selectedDate) {
-    workouts = allWorkouts.filter(w => w.date === selectedDate);
-    document.getElementById('history-subtitle').textContent = formatDate(selectedDate);
-  } else {
-    workouts = [...allWorkouts].reverse();
-    document.getElementById('history-subtitle').textContent = '全記録';
-  }
+  let workouts = selectedDate ? allWorkouts.filter(w => w.date===selectedDate) : [...allWorkouts].reverse();
+  document.getElementById('history-subtitle').textContent = selectedDate ? formatDate(selectedDate) : '全記録';
   document.getElementById('history-count').textContent = `${workouts.length}件`;
   const container = document.getElementById('history-list');
-
   if (workouts.length === 0) {
-    container.innerHTML = `<div class="text-center py-10 text-gray-400">
-      <div class="text-4xl mb-3">🏋️</div>
-      <p class="text-sm">${selectedDate ? 'この日の記録はありません' : 'まだ記録がありません'}</p>
-    </div>`;
+    container.innerHTML = `<div class="text-center py-10 text-gray-400"><div class="text-4xl mb-3">🏋️</div><p class="text-sm">${selectedDate?'この日の記録はありません':'まだ記録がありません'}</p></div>`;
     return;
   }
-
   container.innerHTML = workouts.map((w, wi) => {
-    const realIndex = selectedDate ? allWorkouts.indexOf(w) : allWorkouts.length - 1 - wi;
+    const realIndex = selectedDate ? allWorkouts.indexOf(w) : allWorkouts.length-1-wi;
     const grouped = {};
-    w.sets.forEach(s => { if (!grouped[s.exercise]) grouped[s.exercise] = []; grouped[s.exercise].push(s); });
-    const summary = Object.entries(grouped).map(([ex, sets]) =>
-      `<span class="text-xs text-gray-600">${ex} <span class="text-blue-500 font-medium">${sets.some(s=>s.bodyweight) ? '自重' : Math.max(...sets.map(s=>s.weight))+'kg'}</span></span>`
-    ).join('<span class="text-gray-300 mx-1">·</span>');
-
+    w.sets.forEach(s => { if (!grouped[s.exercise]) grouped[s.exercise]=[]; grouped[s.exercise].push(s); });
+    const summary = Object.entries(grouped).map(([ex, sets]) => {
+      const isDuration = sets[0].type === 'duration';
+      const val = isDuration ? sets.reduce((a,s)=>a+s.duration,0)+'分' : (sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight))+'kg');
+      return `<span class="text-xs text-gray-600">${ex} <span class="${isDuration?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+    }).join('<span class="text-gray-300 mx-1">·</span>');
     return `
     <div class="card p-4 mb-3 fade-in">
       <div class="flex justify-between items-center mb-2">
         <span class="font-semibold text-gray-800">${formatDate(w.date)}</span>
         <div class="flex items-center gap-2">
-          <span class="badge">${w.sets.length}セット</span>
+          <span class="badge">${w.sets.length}件</span>
           <button onclick="deleteWorkout(${realIndex})" class="text-red-400 text-sm">🗑</button>
         </div>
       </div>
@@ -462,9 +729,9 @@ function renderHistory() {
               <div class="text-xs font-semibold text-blue-500 mb-1">${ex}</div>
               ${sets.map((s, i) => `
                 <div class="set-row flex justify-between text-xs">
-                  <span class="text-gray-400">${i+1}セット目</span>
-                  <span class="text-gray-700">${s.bodyweight ? '自重' : s.weight+'kg'} × ${s.reps}回</span>
-                  <span class="text-gray-400">${s.bodyweight ? '自重' : (s.weight*s.reps).toFixed(0)+'kg vol'}</span>
+                  <span class="text-gray-400">${s.type==='duration'?'':i+1+'セット目'}</span>
+                  <span class="text-gray-700">${s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
+                  <span class="text-gray-400">${s.type==='duration'?'':s.bodyweight?'':(s.weight*s.reps).toFixed(0)+'kg vol'}</span>
                 </div>
               `).join('')}
             </div>
@@ -474,88 +741,70 @@ function renderHistory() {
     </div>`;
   }).join('');
 }
-
 function deleteWorkout(index) {
   if (!confirm('この記録を削除しますか？')) return;
   const workouts = getData(WORKOUTS_KEY);
   workouts.splice(index, 1);
   setData(WORKOUTS_KEY, workouts);
-  renderCalendar();
-  renderHistory();
+  renderCalendar(); renderStats(); renderHistory();
 }
 
-// --- Chart ---
+// ===== CHART =====
 function initChartTab() {
   const workouts = getData(WORKOUTS_KEY);
   const exercises = [...new Set(workouts.flatMap(w => w.sets.map(s => s.exercise)))];
   const sel = document.getElementById('chart-exercise');
   const prev = sel.value;
-  sel.innerHTML = exercises.length === 0
-    ? '<option value="">記録がありません</option>'
-    : exercises.map(ex => `<option value="${ex}">${ex}</option>`).join('');
+  sel.innerHTML = exercises.length===0 ? '<option value="">記録がありません</option>' : exercises.map(ex=>`<option value="${ex}">${ex}</option>`).join('');
   if (prev && exercises.includes(prev)) sel.value = prev;
   updateChart();
 }
-
 function setMetric(metric) {
   currentMetric = metric;
   ['maxWeight','totalVolume','maxReps'].forEach(m => {
     const btn = document.getElementById(`metric-${m}`);
-    btn.className = m === metric
-      ? 'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200'
-      : 'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
+    btn.className = m===metric ? 'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200' : 'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
   });
   updateChart();
 }
-
 function updateChart() {
   const exercise = document.getElementById('chart-exercise').value;
   if (!exercise) return;
-  const workouts = getData(WORKOUTS_KEY)
-    .filter(w => w.sets.some(s => s.exercise === exercise))
-    .sort((a,b) => a.date.localeCompare(b.date));
-  const labels = workouts.map(w => { const d = new Date(w.date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; });
+  const workouts = getData(WORKOUTS_KEY).filter(w=>w.sets.some(s=>s.exercise===exercise)).sort((a,b)=>a.date.localeCompare(b.date));
+  const isDuration = workouts.length > 0 && workouts[0].sets.find(s=>s.exercise===exercise)?.type === 'duration';
+
+  // Show/hide metric buttons for duration activities
+  document.getElementById('chart-metric-section').style.display = isDuration ? 'none' : 'block';
+
+  const labels = workouts.map(w => { const d=new Date(w.date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; });
   const values = workouts.map(w => {
-    const sets = w.sets.filter(s => s.exercise === exercise);
-    if (currentMetric === 'maxWeight') return Math.max(...sets.map(s => s.weight));
-    if (currentMetric === 'totalVolume') return sets.reduce((sum,s) => sum + s.weight*s.reps, 0);
-    return Math.max(...sets.map(s => s.reps));
+    const sets = w.sets.filter(s=>s.exercise===exercise);
+    if (isDuration) return sets.reduce((a,s)=>a+s.duration,0);
+    if (currentMetric==='maxWeight') return sets.some(s=>s.bodyweight) ? 0 : Math.max(...sets.map(s=>s.weight||0));
+    if (currentMetric==='totalVolume') return sets.reduce((sum,s)=>sum+(s.bodyweight?0:s.weight*s.reps),0);
+    return Math.max(...sets.map(s=>s.reps||0));
   });
-  const metricLabel = { maxWeight:'最大重量 (kg)', totalVolume:'総ボリューム (kg)', maxReps:'最大回数 (rep)' }[currentMetric];
+  const unit = isDuration ? '分' : currentMetric==='maxReps' ? 'rep' : 'kg';
+  const label = isDuration ? '時間（分）' : {maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',maxReps:'最大回数 (rep)'}[currentMetric];
   const ctx = document.getElementById('progress-chart').getContext('2d');
   if (chartInstance) chartInstance.destroy();
   chartInstance = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{ label: metricLabel, data: values, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', pointBackgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 7, fill: true, tension: 0.3 }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { labels: { color: '#64748b', font: { size: 12 } } } },
-      scales: {
-        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
-        y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } }
-      }
-    }
+    data: { labels, datasets: [{ label, data: values, borderColor: isDuration?'#10b981':'#3b82f6', backgroundColor: isDuration?'rgba(16,185,129,0.1)':'rgba(59,130,246,0.1)', pointBackgroundColor: isDuration?'#10b981':'#3b82f6', pointRadius:5, pointHoverRadius:7, fill:true, tension:0.3 }] },
+    options: { responsive:true, plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}}, scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}} }
   });
-  if (values.length > 0) {
-    const max = Math.max(...values), latest = values[values.length-1], diff = latest - values[0];
-    const unit = currentMetric === 'maxReps' ? 'rep' : 'kg';
+  if (values.length>0) {
+    const max=Math.max(...values), latest=values[values.length-1], diff=latest-values[0];
     document.getElementById('chart-stats').innerHTML = `
       <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${max}${unit}</div><div class="text-xs text-gray-400 mt-1">最高記録</div></div>
       <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}${unit}</div><div class="text-xs text-gray-400 mt-1">直近</div></div>
       <div class="card p-3 text-center"><div class="text-lg font-bold ${diff>=0?'text-green-500':'text-red-400'}">${diff>=0?'+':''}${diff.toFixed(1)}${unit}</div><div class="text-xs text-gray-400 mt-1">初回比</div></div>
     `;
-  } else {
-    document.getElementById('chart-stats').innerHTML = '';
-  }
+  } else { document.getElementById('chart-stats').innerHTML=''; }
 }
 
-// --- Init ---
-document.getElementById('today-label').textContent = (() => {
-  const d = new Date(); return `${d.getMonth()+1}月${d.getDate()}日`;
-})();
+// ===== INIT =====
+document.getElementById('today-label').textContent = (() => { const d=new Date(); return `${d.getMonth()+1}月${d.getDate()}日`; })();
 showTab('record');
 </script>
 </body>
