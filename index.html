@@ -66,7 +66,10 @@
   <!-- 記録タブ -->
   <div id="tab-record" class="content px-4 pt-4 hidden">
     <div class="card p-4 mb-4">
-      <h2 class="text-sm font-semibold mb-3 text-gray-600 uppercase tracking-wide">種目を選択 / 入力</h2>
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">種目を選択 / 入力</h2>
+        <button onclick="toggleEditExercises()" id="edit-exercises-btn" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+      </div>
       <div id="quick-exercises" class="mb-3"></div>
       <input id="exercise-input" type="text" placeholder="種目名を入力..." class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none mb-3" />
       <div class="flex gap-2 mb-3">
@@ -176,20 +179,40 @@ let currentMetric = 'maxWeight';
 let calYear, calMonth;
 let selectedDate = null;
 let isBodyweight = false;
+let isEditingExercises = false;
 
 const EXERCISES_KEY = 'wt_exercises';
 const WORKOUTS_KEY = 'wt_workouts';
+const HIDDEN_EXERCISES_KEY = 'wt_hidden_exercises';
 const DEFAULT_EXERCISES = ['ベンチプレス','スクワット','デッドリフト','ショルダープレス','懸垂','ローイング','アームカール','トライセプス','レッグプレス','ラットプルダウン'];
 
 function getData(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
 function setData(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 function getExercises() {
-  return [...new Set([...DEFAULT_EXERCISES, ...getData(EXERCISES_KEY)])];
+  const hidden = getData(HIDDEN_EXERCISES_KEY);
+  return [...new Set([...DEFAULT_EXERCISES, ...getData(EXERCISES_KEY)])].filter(e => !hidden.includes(e));
 }
 function addExerciseToList(name) {
   const saved = getData(EXERCISES_KEY);
   if (!saved.includes(name) && !DEFAULT_EXERCISES.includes(name)) setData(EXERCISES_KEY, [...saved, name]);
+  // 非表示リストから戻す
+  const hidden = getData(HIDDEN_EXERCISES_KEY);
+  if (hidden.includes(name)) setData(HIDDEN_EXERCISES_KEY, hidden.filter(h => h !== name));
+}
+function deleteExercise(name) {
+  const hidden = getData(HIDDEN_EXERCISES_KEY);
+  if (!hidden.includes(name)) setData(HIDDEN_EXERCISES_KEY, [...hidden, name]);
+  renderQuickExercises();
+}
+function toggleEditExercises() {
+  isEditingExercises = !isEditingExercises;
+  const btn = document.getElementById('edit-exercises-btn');
+  btn.textContent = isEditingExercises ? '完了' : '編集';
+  btn.className = isEditingExercises
+    ? 'text-xs text-white border border-blue-500 bg-blue-500 rounded-lg px-2 py-1'
+    : 'text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1';
+  renderQuickExercises();
 }
 
 function todayStr() {
@@ -231,8 +254,11 @@ function showTab(tab) {
 
 // --- Record ---
 function renderQuickExercises() {
-  document.getElementById('quick-exercises').innerHTML = getExercises().slice(0,10).map(ex =>
-    `<span class="exercise-chip" onclick="selectExercise('${ex}')">${ex}</span>`
+  const exercises = getExercises();
+  document.getElementById('quick-exercises').innerHTML = exercises.map(ex =>
+    isEditingExercises
+      ? `<span class="exercise-chip" style="padding-right:6px">${ex} <button onclick="deleteExercise('${ex}')" class="text-red-400 font-bold ml-1 text-sm">×</button></span>`
+      : `<span class="exercise-chip" onclick="selectExercise('${ex}')">${ex}</span>`
   ).join('');
 }
 function selectExercise(name) { document.getElementById('exercise-input').value = name; }
