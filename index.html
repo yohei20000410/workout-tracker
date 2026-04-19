@@ -72,7 +72,10 @@
       <div class="flex gap-2 mb-3">
         <div class="flex-1">
           <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
-          <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+          <div class="flex gap-1">
+            <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+            <button id="bodyweight-btn" onclick="toggleBodyweight()" class="rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">自重</button>
+          </div>
         </div>
         <div class="flex-1">
           <label class="text-xs text-gray-400 mb-1 block">回数 (rep)</label>
@@ -161,6 +164,7 @@ let chartInstance = null;
 let currentMetric = 'maxWeight';
 let calYear, calMonth;
 let selectedDate = null;
+let isBodyweight = false;
 
 const EXERCISES_KEY = 'wt_exercises';
 const WORKOUTS_KEY = 'wt_workouts';
@@ -222,14 +226,30 @@ function renderQuickExercises() {
 }
 function selectExercise(name) { document.getElementById('exercise-input').value = name; }
 
+function toggleBodyweight() {
+  isBodyweight = !isBodyweight;
+  const btn = document.getElementById('bodyweight-btn');
+  const weightInput = document.getElementById('weight-input');
+  if (isBodyweight) {
+    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-blue-400 text-blue-600 bg-blue-50 whitespace-nowrap font-semibold';
+    weightInput.value = '';
+    weightInput.disabled = true;
+    weightInput.style.opacity = '0.4';
+  } else {
+    btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';
+    weightInput.disabled = false;
+    weightInput.style.opacity = '1';
+  }
+}
+
 function addSet() {
   const exercise = document.getElementById('exercise-input').value.trim();
   const weight = parseFloat(document.getElementById('weight-input').value);
   const reps = parseInt(document.getElementById('reps-input').value);
   if (!exercise) { alert('種目を入力してください'); return; }
-  if (isNaN(weight) || weight <= 0) { alert('重量を入力してください'); return; }
+  if (!isBodyweight && (isNaN(weight) || weight <= 0)) { alert('重量を入力するか「自重」を選択してください'); return; }
   if (isNaN(reps) || reps <= 0) { alert('回数を入力してください'); return; }
-  currentSets.push({ exercise, weight, reps, id: Date.now() });
+  currentSets.push({ exercise, weight: isBodyweight ? null : weight, bodyweight: isBodyweight, reps, id: Date.now() });
   addExerciseToList(exercise);
   renderTodaySets();
   document.getElementById('reps-input').value = '';
@@ -257,7 +277,7 @@ function renderTodaySets() {
       ${sets.map((s, i) => `
         <div class="set-row flex justify-between items-center">
           <span class="text-sm text-gray-400">${i+1}セット目</span>
-          <span class="text-sm font-medium text-gray-700">${s.weight}kg × ${s.reps}回</span>
+          <span class="text-sm font-medium text-gray-700">${s.bodyweight ? '自重' : s.weight+'kg'} × ${s.reps}回</span>
           <button onclick="removeSet(${s.id})" class="text-red-400 text-xs ml-2 py-1 px-2">✕</button>
         </div>
       `).join('')}
@@ -366,7 +386,7 @@ function renderHistory() {
     const grouped = {};
     w.sets.forEach(s => { if (!grouped[s.exercise]) grouped[s.exercise] = []; grouped[s.exercise].push(s); });
     const summary = Object.entries(grouped).map(([ex, sets]) =>
-      `<span class="text-xs text-gray-600">${ex} <span class="text-blue-500 font-medium">${Math.max(...sets.map(s=>s.weight))}kg</span></span>`
+      `<span class="text-xs text-gray-600">${ex} <span class="text-blue-500 font-medium">${sets.some(s=>s.bodyweight) ? '自重' : Math.max(...sets.map(s=>s.weight))+'kg'}</span></span>`
     ).join('<span class="text-gray-300 mx-1">·</span>');
 
     return `
@@ -388,8 +408,8 @@ function renderHistory() {
               ${sets.map((s, i) => `
                 <div class="set-row flex justify-between text-xs">
                   <span class="text-gray-400">${i+1}セット目</span>
-                  <span class="text-gray-700">${s.weight}kg × ${s.reps}回</span>
-                  <span class="text-gray-400">${(s.weight*s.reps).toFixed(0)}kg vol</span>
+                  <span class="text-gray-700">${s.bodyweight ? '自重' : s.weight+'kg'} × ${s.reps}回</span>
+                  <span class="text-gray-400">${s.bodyweight ? '自重' : (s.weight*s.reps).toFixed(0)+'kg vol'}</span>
                 </div>
               `).join('')}
             </div>
