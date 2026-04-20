@@ -489,13 +489,14 @@ function applyScheduledTemplate() {
   if (scheduled) applyTemplate(scheduled);
 }
 function applyTemplate(template) {
-  template.exercises.forEach(ex => {
-    document.getElementById('exercise-input').value = ex.name;
-    addExerciseToList(ex.name);
-  });
-  document.getElementById('exercise-input').value = template.exercises.length > 0 ? template.exercises[0].name : '';
+  template.exercises.forEach(ex => addExerciseToList(ex.name));
   if (template.exercises.length > 0) {
-    setActivityType(template.exercises[0].type || 'strength');
+    const first = template.exercises[0];
+    document.getElementById('exercise-input').value = first.name;
+    setActivityType(first.type || 'strength');
+    if (first.type === 'duration' && template.defaultDuration) {
+      document.getElementById('duration-input').value = template.defaultDuration;
+    }
   }
   document.getElementById('schedule-banner').classList.add('hidden');
 }
@@ -804,7 +805,22 @@ function updateChart() {
 }
 
 // ===== INIT =====
+function initDefaultTemplates() {
+  const templates = getData(TEMPLATES_KEY);
+  const names = templates.map(t => t.name);
+  const defaults = [
+    { id: 1, name: 'ピラティス', exercises: [{ name: 'ピラティス', type: 'duration' }], days: [3], defaultDuration: 30 },
+    { id: 2, name: 'ボディーパンプ', exercises: [{ name: 'ボディーパンプ', type: 'duration' }], days: [5], defaultDuration: 30 },
+  ];
+  let updated = false;
+  defaults.forEach(d => {
+    if (!names.includes(d.name)) { templates.push(d); updated = true; }
+  });
+  if (updated) setData(TEMPLATES_KEY, templates);
+}
+
 document.getElementById('today-label').textContent = (() => { const d=new Date(); return `${d.getMonth()+1}月${d.getDate()}日`; })();
+initDefaultTemplates();
 showTab('record');
 </script>
 </body>
