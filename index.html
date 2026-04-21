@@ -289,31 +289,51 @@
     <!-- 体組成 -->
     <div id="section-body" class="hidden">
       <div class="card p-4 mb-4">
-        <h3 class="text-sm font-semibold text-gray-600 mb-3">体組成を記録</h3>
+        <h3 class="text-sm font-semibold text-gray-600 mb-3">📊 体組成を記録</h3>
         <div class="mb-3">
           <label class="text-xs text-gray-400 mb-1 block">📅 記録日</label>
           <input id="body-date" type="date" class="w-full rounded-xl px-3 py-2 text-sm border outline-none" />
         </div>
+        <!-- 基本 -->
+        <p class="text-xs font-semibold text-gray-500 mb-2">基本測定値</p>
         <div class="grid grid-cols-3 gap-2 mb-3">
-          <div>
-            <label class="text-xs text-gray-400 mb-1 block">体重 (kg)</label>
-            <input id="body-weight" type="number" inputmode="decimal" placeholder="70" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-400 mb-1 block">体脂肪率 (%)</label>
-            <input id="body-fat" type="number" inputmode="decimal" placeholder="15" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-400 mb-1 block">筋肉量 (kg)</label>
-            <input id="body-muscle" type="number" inputmode="decimal" placeholder="30" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" />
-          </div>
+          <div><label class="text-xs text-gray-400 mb-1 block">体重 (kg)</label><input id="body-weight" type="number" inputmode="decimal" placeholder="68.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">BMI</label><input id="body-bmi" type="number" inputmode="decimal" placeholder="25.6" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">体内年齢</label><input id="body-age" type="number" inputmode="numeric" placeholder="30" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
         </div>
+        <!-- 体組成 -->
+        <p class="text-xs font-semibold text-gray-500 mb-2">体組成</p>
+        <div class="grid grid-cols-3 gap-2 mb-3">
+          <div><label class="text-xs text-gray-400 mb-1 block">体脂肪率 (%)</label><input id="body-fat" type="number" inputmode="decimal" placeholder="12.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">体脂肪量 (kg)</label><input id="body-fat-mass" type="number" inputmode="decimal" placeholder="8.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">筋肉量 (kg)</label><input id="body-muscle" type="number" inputmode="decimal" placeholder="55.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">推定骨量 (kg)</label><input id="body-bone" type="number" inputmode="decimal" placeholder="2.8" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">体水分率 (%)</label><input id="body-water" type="number" inputmode="decimal" placeholder="60.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">内臓脂肪Lv</label><input id="body-visceral" type="number" inputmode="numeric" placeholder="2" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+        </div>
+        <!-- 代謝 -->
+        <p class="text-xs font-semibold text-gray-500 mb-2">代謝</p>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div><label class="text-xs text-gray-400 mb-1 block">基礎代謝量 (kcal)</label><input id="body-bmr" type="number" inputmode="numeric" placeholder="1500" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+        </div>
+        <!-- 部位別 -->
+        <details class="mb-3">
+          <summary class="text-xs font-semibold text-gray-500 cursor-pointer mb-2">部位別筋肉量 (kg) ▾</summary>
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <div><label class="text-xs text-gray-400 mb-1 block">体幹</label><input id="body-trunk" type="number" inputmode="decimal" placeholder="29.5" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+            <div><label class="text-xs text-gray-400 mb-1 block">右腕</label><input id="body-r-arm" type="number" inputmode="decimal" placeholder="3.5" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+            <div><label class="text-xs text-gray-400 mb-1 block">左腕</label><input id="body-l-arm" type="number" inputmode="decimal" placeholder="3.4" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+            <div><label class="text-xs text-gray-400 mb-1 block">右脚</label><input id="body-r-leg" type="number" inputmode="decimal" placeholder="9.5" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+            <div><label class="text-xs text-gray-400 mb-1 block">左脚</label><input id="body-l-leg" type="number" inputmode="decimal" placeholder="9.3" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          </div>
+        </details>
         <button onclick="saveBodyData()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">記録する</button>
       </div>
-      <div class="flex gap-2 mb-3">
+      <div class="flex gap-1 flex-wrap mb-3">
         <button onclick="setBodyMetric('weight')" id="bm-weight" class="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">体重</button>
         <button onclick="setBodyMetric('fat')" id="bm-fat" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">体脂肪率</button>
         <button onclick="setBodyMetric('muscle')" id="bm-muscle" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">筋肉量</button>
+        <button onclick="setBodyMetric('bmr')" id="bm-bmr" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">基礎代謝</button>
       </div>
       <div class="card p-4 mb-4"><canvas id="body-chart" height="200"></canvas></div>
       <div id="body-history" class="mb-4"></div>
@@ -963,17 +983,29 @@ function initVolumeChart(){
 // ===== BODY CHART =====
 function saveBodyData(){
   const weight=parseFloat(document.getElementById('body-weight').value)||null;
+  const bmi=parseFloat(document.getElementById('body-bmi').value)||null;
+  const bodyAge=parseInt(document.getElementById('body-age').value)||null;
   const fat=parseFloat(document.getElementById('body-fat').value)||null;
+  const fatMass=parseFloat(document.getElementById('body-fat-mass').value)||null;
   const muscle=parseFloat(document.getElementById('body-muscle').value)||null;
-  if(!weight&&!fat&&!muscle){alert('少なくとも1項目を入力してください');return;}
+  const bone=parseFloat(document.getElementById('body-bone').value)||null;
+  const water=parseFloat(document.getElementById('body-water').value)||null;
+  const visceral=parseFloat(document.getElementById('body-visceral').value)||null;
+  const bmr=parseInt(document.getElementById('body-bmr').value)||null;
+  const trunk=parseFloat(document.getElementById('body-trunk').value)||null;
+  const rArm=parseFloat(document.getElementById('body-r-arm').value)||null;
+  const lArm=parseFloat(document.getElementById('body-l-arm').value)||null;
+  const rLeg=parseFloat(document.getElementById('body-r-leg').value)||null;
+  const lLeg=parseFloat(document.getElementById('body-l-leg').value)||null;
+  if(!weight&&!fat&&!muscle&&!bmi&&!bmr){alert('少なくとも1項目を入力してください');return;}
   const body=getData(BODY_KEY);
   const date=document.getElementById('body-date').value||todayStr();
   const existIdx=body.findIndex(b=>b.date===date);
-  const record={id:Date.now(),date,weight,fat,muscle};
+  const record={id:Date.now(),date,weight,bmi,bodyAge,fat,fatMass,muscle,bone,water,visceral,bmr,trunk,rArm,lArm,rLeg,lLeg};
   if(existIdx>=0)body[existIdx]=record; else body.push(record);
   body.sort((a,b)=>a.date.localeCompare(b.date));
   setData(BODY_KEY,body);
-  ['body-weight','body-fat','body-muscle'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['body-weight','body-bmi','body-age','body-fat','body-fat-mass','body-muscle','body-bone','body-water','body-visceral','body-bmr','body-trunk','body-r-arm','body-l-arm','body-r-leg','body-l-leg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const btn=document.querySelector('#section-body button.btn-primary');
   btn.textContent='✓ 記録しました！';btn.style.opacity='0.7';
   setTimeout(()=>{btn.textContent='記録する';btn.style.opacity='1';},2000);
@@ -981,9 +1013,9 @@ function saveBodyData(){
 }
 function setBodyMetric(metric){
   currentBodyMetric=metric;
-  ['weight','fat','muscle'].forEach(m=>{
+  ['weight','fat','muscle','bmr'].forEach(m=>{
     const btn=document.getElementById(`bm-${m}`);
-    btn.className=m===metric?'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200':'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
+    if(btn)btn.className=m===metric?'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200':'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
   });
   drawBodyChart();
 }
@@ -993,9 +1025,9 @@ function drawBodyChart(){
   const filtered=body.filter(b=>b[currentBodyMetric]!==null&&b[currentBodyMetric]!==undefined);
   const labels=filtered.map(b=>{const d=new Date(b.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
   const values=filtered.map(b=>b[currentBodyMetric]);
-  const colors={weight:{border:'#3b82f6',bg:'rgba(59,130,246,0.1)'},fat:{border:'#ef4444',bg:'rgba(239,68,68,0.1)'},muscle:{border:'#10b981',bg:'rgba(16,185,129,0.1)'}};
-  const units={weight:'kg',fat:'%',muscle:'kg'};
-  const labelNames={weight:'体重 (kg)',fat:'体脂肪率 (%)',muscle:'筋肉量 (kg)'};
+  const colors={weight:{border:'#3b82f6',bg:'rgba(59,130,246,0.1)'},fat:{border:'#ef4444',bg:'rgba(239,68,68,0.1)'},muscle:{border:'#10b981',bg:'rgba(16,185,129,0.1)'},bmr:{border:'#f97316',bg:'rgba(249,115,22,0.1)'}};
+  const units={weight:'kg',fat:'%',muscle:'kg',bmr:'kcal'};
+  const labelNames={weight:'体重 (kg)',fat:'体脂肪率 (%)',muscle:'筋肉量 (kg)',bmr:'基礎代謝量 (kcal)'};
   const ctx=document.getElementById('body-chart').getContext('2d');
   if(bodyChartInstance)bodyChartInstance.destroy();
   if(filtered.length===0){bodyChartInstance=null;return;}
@@ -1006,14 +1038,30 @@ function renderBodyHistory(){
   const container=document.getElementById('body-history');
   if(body.length===0){container.innerHTML='';return;}
   container.innerHTML=[...body].reverse().slice(0,10).map(b=>`
-    <div class="card p-3 mb-2 flex justify-between items-center">
-      <span class="text-sm text-gray-600">${formatDate(b.date)}</span>
-      <div class="flex gap-3 text-xs">
-        ${b.weight?`<span class="text-blue-500">${b.weight}kg</span>`:''}
-        ${b.fat?`<span class="text-red-400">${b.fat}%</span>`:''}
-        ${b.muscle?`<span class="text-green-500">💪${b.muscle}kg</span>`:''}
+    <div class="card p-3 mb-2">
+      <div class="flex justify-between items-center mb-1">
+        <span class="text-sm font-semibold text-gray-700">${formatDate(b.date)}</span>
+        <button onclick="deleteBodyData(${b.id})" class="text-red-400 text-xs">🗑</button>
       </div>
-      <button onclick="deleteBodyData(${b.id})" class="text-red-400 text-xs">🗑</button>
+      <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        ${b.weight?`<span class="text-blue-500">体重 ${b.weight}kg</span>`:''}
+        ${b.bmi?`<span class="text-indigo-400">BMI ${b.bmi}</span>`:''}
+        ${b.bodyAge?`<span class="text-purple-400">体内年齢 ${b.bodyAge}歳</span>`:''}
+        ${b.fat?`<span class="text-red-400">体脂肪率 ${b.fat}%</span>`:''}
+        ${b.fatMass?`<span class="text-red-300">体脂肪量 ${b.fatMass}kg</span>`:''}
+        ${b.muscle?`<span class="text-green-500">筋肉量 ${b.muscle}kg</span>`:''}
+        ${b.bone?`<span class="text-gray-400">骨量 ${b.bone}kg</span>`:''}
+        ${b.water?`<span class="text-cyan-400">体水分率 ${b.water}%</span>`:''}
+        ${b.visceral?`<span class="text-orange-400">内臓脂肪 Lv.${b.visceral}</span>`:''}
+        ${b.bmr?`<span class="text-orange-500">基礎代謝 ${b.bmr}kcal</span>`:''}
+      </div>
+      ${(b.trunk||b.rArm||b.lArm||b.rLeg||b.lLeg)?`<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs mt-1 text-gray-400">
+        ${b.trunk?`<span>体幹 ${b.trunk}kg</span>`:''}
+        ${b.rArm?`<span>右腕 ${b.rArm}kg</span>`:''}
+        ${b.lArm?`<span>左腕 ${b.lArm}kg</span>`:''}
+        ${b.rLeg?`<span>右脚 ${b.rLeg}kg</span>`:''}
+        ${b.lLeg?`<span>左脚 ${b.lLeg}kg</span>`:''}
+      </div>`:''}
     </div>`).join('');
 }
 function deleteBodyData(id){
@@ -1090,21 +1138,42 @@ function showToast(msg, duration=3000) {
 // ===== URL PARAMETER (ショートカット連携) =====
 function handleUrlParams() {
   const params = new URLSearchParams(window.location.search);
-  const w = params.get('w'); // 体重
-  const f = params.get('f'); // 体脂肪率
-  const m = params.get('m'); // 筋肉量
-  if (!w && !f && !m) return;
+  // サポートするパラメーター
+  const w   = params.get('w');   // 体重 (kg)
+  const f   = params.get('f');   // 体脂肪率 (%)
+  const m   = params.get('m');   // 筋肉量 (kg)
+  const bmi = params.get('bmi'); // BMI
+  const age = params.get('age'); // 体内年齢
+  const fm  = params.get('fm');  // 体脂肪量 (kg)
+  const bn  = params.get('bn');  // 推定骨量 (kg)
+  const wt  = params.get('wt');  // 体水分率 (%)
+  const vs  = params.get('vs');  // 内臓脂肪レベル
+  const bmr = params.get('bmr'); // 基礎代謝量 (kcal)
+  if (!w && !f && !m && !bmi && !age && !fm && !bn && !wt && !vs && !bmr) return;
 
-  const weight = w ? parseFloat(w) : null;
-  const fat = f ? parseFloat(f) : null;
-  const muscle = m ? parseFloat(m) : null;
   const date = todayStr();
-
   const body = getData(BODY_KEY);
   const existIdx = body.findIndex(b => b.date === date);
-  const record = { id: Date.now(), date, weight, fat, muscle };
-  if (existIdx >= 0) body[existIdx] = { ...body[existIdx], ...record };
-  else body.push(record);
+  const incoming = {
+    id: Date.now(), date,
+    weight:   w   ? parseFloat(w)   : null,
+    bmi:      bmi ? parseFloat(bmi) : null,
+    bodyAge:  age ? parseInt(age)   : null,
+    fat:      f   ? parseFloat(f)   : null,
+    fatMass:  fm  ? parseFloat(fm)  : null,
+    muscle:   m   ? parseFloat(m)   : null,
+    bone:     bn  ? parseFloat(bn)  : null,
+    water:    wt  ? parseFloat(wt)  : null,
+    visceral: vs  ? parseFloat(vs)  : null,
+    bmr:      bmr ? parseInt(bmr)   : null,
+  };
+  // 既存レコードがあればマージ（nullで上書きしない）
+  if (existIdx >= 0) {
+    const existing = body[existIdx];
+    Object.keys(incoming).forEach(k => { if (incoming[k] !== null) existing[k] = incoming[k]; });
+  } else {
+    body.push(incoming);
+  }
   body.sort((a,b) => a.date.localeCompare(b.date));
   setData(BODY_KEY, body);
 
@@ -1113,9 +1182,11 @@ function handleUrlParams() {
 
   // 通知
   const parts = [];
-  if (weight) parts.push(`体重 ${weight}kg`);
-  if (fat) parts.push(`体脂肪率 ${fat}%`);
-  if (muscle) parts.push(`筋肉量 ${muscle}kg`);
+  if (incoming.weight)  parts.push(`体重 ${incoming.weight}kg`);
+  if (incoming.fat)     parts.push(`体脂肪率 ${incoming.fat}%`);
+  if (incoming.muscle)  parts.push(`筋肉量 ${incoming.muscle}kg`);
+  if (incoming.bmr)     parts.push(`基礎代謝 ${incoming.bmr}kcal`);
+  if (incoming.bmi)     parts.push(`BMI ${incoming.bmi}`);
   setTimeout(() => showToast(`✅ ${parts.join('・')} を自動記録しました`), 500);
 }
 
