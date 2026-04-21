@@ -307,7 +307,7 @@
           <div><label class="text-xs text-gray-400 mb-1 block">体脂肪率 (%)</label><input id="body-fat" type="number" inputmode="decimal" placeholder="12.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
           <div><label class="text-xs text-gray-400 mb-1 block">体脂肪量 (kg)</label><input id="body-fat-mass" type="number" inputmode="decimal" placeholder="8.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
           <div><label class="text-xs text-gray-400 mb-1 block">筋肉量 (kg)</label><input id="body-muscle" type="number" inputmode="decimal" placeholder="55.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
-          <div><label class="text-xs text-gray-400 mb-1 block">骨格筋率 (%)</label><input id="body-skeletal" type="number" inputmode="decimal" placeholder="40.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
+          <div><label class="text-xs text-gray-400 mb-1 block">筋肉率 (%)</label><input id="body-skeletal" type="number" inputmode="decimal" placeholder="40.0" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
           <div><label class="text-xs text-gray-400 mb-1 block">内臓脂肪Lv</label><input id="body-visceral" type="number" inputmode="numeric" placeholder="2" class="w-full rounded-xl px-2 py-2 text-sm border outline-none" /></div>
         </div>
         <!-- 部位別 -->
@@ -327,7 +327,7 @@
         <button onclick="setBodyMetric('weight')" id="bm-weight" class="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">体重</button>
         <button onclick="setBodyMetric('fat')" id="bm-fat" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">体脂肪率</button>
         <button onclick="setBodyMetric('muscle')" id="bm-muscle" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">筋肉量</button>
-        <button onclick="setBodyMetric('skeletal')" id="bm-skeletal" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">骨格筋率</button>
+        <button onclick="setBodyMetric('skeletal')" id="bm-skeletal" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">筋肉率</button>
         <button onclick="setBodyMetric('bmr')" id="bm-bmr" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">基礎代謝</button>
       </div>
       <div class="card p-4 mb-4"><canvas id="body-chart" height="200"></canvas></div>
@@ -998,9 +998,11 @@ function saveBodyData(){
   body.sort((a,b)=>a.date.localeCompare(b.date));
   setData(BODY_KEY,body);
   ['body-weight','body-fat','body-fat-mass','body-muscle','body-skeletal','body-visceral','body-bmr','body-trunk','body-r-arm','body-l-arm','body-r-leg','body-l-leg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  // 日付を今日にリセット（別日付で続けて入力したとき上書きされるバグ防止）
+  document.getElementById('body-date').value=todayStr();
   const btn=document.querySelector('#section-body button.btn-primary');
-  btn.textContent='✓ 記録しました！';btn.style.opacity='0.7';
-  setTimeout(()=>{btn.textContent='記録する';btn.style.opacity='1';},2000);
+  btn.textContent=`✓ ${formatDate(date)} を記録しました！`;btn.style.opacity='0.7';
+  setTimeout(()=>{btn.textContent='記録する';btn.style.opacity='1';},2500);
   initBodyChart();
 }
 function setBodyMetric(metric){
@@ -1019,7 +1021,7 @@ function drawBodyChart(){
   const values=filtered.map(b=>b[currentBodyMetric]);
   const colors={weight:{border:'#3b82f6',bg:'rgba(59,130,246,0.1)'},fat:{border:'#ef4444',bg:'rgba(239,68,68,0.1)'},muscle:{border:'#10b981',bg:'rgba(16,185,129,0.1)'},skeletal:{border:'#059669',bg:'rgba(5,150,105,0.1)'},bmr:{border:'#f97316',bg:'rgba(249,115,22,0.1)'}};
   const units={weight:'kg',fat:'%',muscle:'kg',skeletal:'%',bmr:'kcal'};
-  const labelNames={weight:'体重 (kg)',fat:'体脂肪率 (%)',muscle:'筋肉量 (kg)',skeletal:'骨格筋率 (%)',bmr:'基礎代謝量 (kcal)'};
+  const labelNames={weight:'体重 (kg)',fat:'体脂肪率 (%)',muscle:'筋肉量 (kg)',skeletal:'筋肉率 (%)',bmr:'基礎代謝量 (kcal)'};
   const ctx=document.getElementById('body-chart').getContext('2d');
   if(bodyChartInstance)bodyChartInstance.destroy();
   if(filtered.length===0){bodyChartInstance=null;return;}
@@ -1040,7 +1042,7 @@ function renderBodyHistory(){
         ${b.fat?`<span class="text-red-400">体脂肪率 ${b.fat}%</span>`:''}
         ${b.fatMass?`<span class="text-red-300">体脂肪量 ${b.fatMass}kg</span>`:''}
         ${b.muscle?`<span class="text-green-500">筋肉量 ${b.muscle}kg</span>`:''}
-        ${b.skeletal?`<span class="text-emerald-400">骨格筋率 ${b.skeletal}%</span>`:''}
+        ${b.skeletal?`<span class="text-emerald-400">筋肉率 ${b.skeletal}%</span>`:''}
         ${b.visceral?`<span class="text-orange-400">内臓脂肪 Lv.${b.visceral}</span>`:''}
         ${b.bmr?`<span class="text-orange-500">基礎代謝 ${b.bmr}kcal</span>`:''}
       </div>
