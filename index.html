@@ -49,9 +49,12 @@
     .sub-tab.active { background: #fff; color: #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .record-hint { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; }
     .copy-btn { font-size: 11px; color: #3b82f6; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+    #toast { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; opacity: 0; transition: all 0.3s ease; z-index: 100; white-space: nowrap; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
+<div id="toast"></div>
 <div id="app">
   <div class="header px-4 py-3 flex items-center justify-between">
     <h1 class="text-lg font-bold text-gray-800">💪 筋トレ記録</h1>
@@ -1076,10 +1079,51 @@ function initDefaultTemplates(){
   defaults.forEach(d=>{if(!names.includes(d.name)){templates.push(d);updated=true;}});
   if(updated)setData(TEMPLATES_KEY,templates);
 }
+// ===== TOAST =====
+function showToast(msg, duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ===== URL PARAMETER (ショートカット連携) =====
+function handleUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const w = params.get('w'); // 体重
+  const f = params.get('f'); // 体脂肪率
+  const m = params.get('m'); // 筋肉量
+  if (!w && !f && !m) return;
+
+  const weight = w ? parseFloat(w) : null;
+  const fat = f ? parseFloat(f) : null;
+  const muscle = m ? parseFloat(m) : null;
+  const date = todayStr();
+
+  const body = getData(BODY_KEY);
+  const existIdx = body.findIndex(b => b.date === date);
+  const record = { id: Date.now(), date, weight, fat, muscle };
+  if (existIdx >= 0) body[existIdx] = { ...body[existIdx], ...record };
+  else body.push(record);
+  body.sort((a,b) => a.date.localeCompare(b.date));
+  setData(BODY_KEY, body);
+
+  // URLパラメーターを消す（履歴に残さない）
+  window.history.replaceState({}, '', window.location.pathname);
+
+  // 通知
+  const parts = [];
+  if (weight) parts.push(`体重 ${weight}kg`);
+  if (fat) parts.push(`体脂肪率 ${fat}%`);
+  if (muscle) parts.push(`筋肉量 ${muscle}kg`);
+  setTimeout(() => showToast(`✅ ${parts.join('・')} を自動記録しました`), 500);
+}
+
 document.getElementById('today-label').textContent=(()=>{const d=new Date();return `${d.getMonth()+1}月${d.getDate()}日`;})();
 document.getElementById('record-date').value=todayStr();
 document.getElementById('body-date').value=todayStr();
 initDefaultTemplates();
+handleUrlParams();
 showTab('record');
 </script>
 </body>
