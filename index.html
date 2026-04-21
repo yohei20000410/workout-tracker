@@ -205,8 +205,21 @@
     </div>
   </div>
 
+  <!-- 日付詳細モーダル -->
+  <div id="day-modal" class="hidden modal-overlay" onclick="if(event.target===this)hideDayModal()">
+    <div class="modal-sheet">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="day-modal-title" class="font-bold text-gray-800"></h3>
+        <button onclick="hideDayModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div id="day-modal-content" class="mb-4"></div>
+      <button id="day-modal-add-btn" onclick="" class="btn-primary w-full py-3 rounded-xl text-sm font-semibold">＋ この日に記録を追加</button>
+    </div>
+  </div>
+
   <!-- 履歴タブ -->
   <div id="tab-history" class="content px-4 pt-4 hidden">
+    <button onclick="addRecordForDate(todayStr())" class="w-full mb-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style="background:#3b82f6">＋ 今日の記録を追加</button>
     <div class="grid grid-cols-3 gap-2 mb-4">
       <div class="card p-3 text-center">
         <div id="stat-total" class="text-xl font-bold text-blue-500">0</div>
@@ -817,7 +830,38 @@ function renderCalendar() {
 }
 function prevMonth(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}selectedDate=null;renderCalendar();renderStats();renderHistory();}
 function nextMonth(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}selectedDate=null;renderCalendar();renderStats();renderHistory();}
-function selectCalDay(dateStr){selectedDate=selectedDate===dateStr?null:dateStr;renderCalendar();renderHistory();}
+function selectCalDay(dateStr){selectedDate=dateStr;renderCalendar();renderHistory();showDayModal(dateStr);}
+function showDayModal(dateStr){
+  const workouts=getData(WORKOUTS_KEY).filter(w=>w.date===dateStr);
+  document.getElementById('day-modal-title').textContent=formatDate(dateStr);
+  const content=document.getElementById('day-modal-content');
+  if(workouts.length===0){
+    content.innerHTML='<p class="text-sm text-gray-400 text-center py-4">この日の記録はありません</p>';
+  } else {
+    content.innerHTML=workouts.map(w=>{
+      const grouped={};
+      w.sets.forEach(s=>{if(!grouped[s.exercise])grouped[s.exercise]=[];grouped[s.exercise].push(s);});
+      const vol=calcVolume(w.sets);
+      return `<div class="card p-3 mb-2">
+        <div class="flex flex-wrap gap-1 mb-1">${Object.entries(grouped).map(([ex,sets])=>{
+          const isDur=sets[0].type==='duration';
+          const val=isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
+          return `<span class="text-xs text-gray-700">${ex} <span class="${isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+        }).join('<span class="text-gray-300 mx-1">·</span>')}</div>
+        ${vol>0?`<div class="text-xs text-orange-400">負荷量: ${vol.toLocaleString()}kg</div>`:''}
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('day-modal-add-btn').setAttribute('onclick',`addRecordForDate('${dateStr}')`);
+  document.getElementById('day-modal').classList.remove('hidden');
+}
+function hideDayModal(){document.getElementById('day-modal').classList.add('hidden');}
+function addRecordForDate(dateStr){
+  hideDayModal();
+  document.getElementById('record-date').value=dateStr;
+  showTab('record');
+  showToast(`📅 ${formatDate(dateStr)}の記録を追加`);
+}
 
 // ===== HISTORY =====
 function renderHistory() {
