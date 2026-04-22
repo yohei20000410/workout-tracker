@@ -125,83 +125,86 @@
     </div>
   </div>
 
-  <!-- 記録タブ -->
-  <div id="tab-record" class="content px-4 pt-4 hidden">
-    <!-- 日付選択 -->
-    <div class="card p-3 mb-4 flex items-center justify-between">
-      <span class="text-sm font-medium text-gray-600">📅 記録日</span>
-      <input id="record-date" type="date" class="rounded-xl px-3 py-1.5 text-sm border outline-none" />
-    </div>
-
-    <div id="schedule-banner" class="hidden card p-3 mb-4 border-blue-200 bg-blue-50">
-      <div class="flex justify-between items-center">
-        <div>
-          <div class="text-xs text-blue-400 mb-0.5">今日のメニュー</div>
-          <div id="schedule-banner-name" class="font-semibold text-blue-700"></div>
-        </div>
-        <button onclick="applyScheduledTemplate()" class="btn-primary text-sm px-3 py-1.5 rounded-lg font-semibold">適用</button>
-      </div>
-    </div>
-
-    <div class="card p-4 mb-4">
+  <!-- 記録モーダル -->
+  <div id="record-modal" class="hidden modal-overlay">
+    <div class="modal-sheet" style="max-height:92vh">
       <div class="flex justify-between items-center mb-3">
-        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">種目を選択 / 入力</h2>
-        <div class="flex gap-1">
-          <button onclick="showTemplateSelect()" class="text-xs text-purple-500 border border-purple-200 bg-purple-50 rounded-lg px-2 py-1">テンプレ</button>
-          <button onclick="toggleEditExercises()" id="edit-exercises-btn" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+        <div>
+          <div class="text-xs text-gray-400 mb-0.5">📅 記録日</div>
+          <input id="record-date" type="date" class="text-base font-bold text-gray-800 border-none outline-none bg-transparent" />
         </div>
+        <button onclick="closeRecordModal()" class="text-gray-400 text-xl px-1">✕</button>
       </div>
-      <div id="quick-exercises" class="mb-3"></div>
-      <input id="exercise-input" type="text" placeholder="種目名を入力..." class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none mb-2" oninput="onExerciseInput()" />
 
-      <!-- 前回・最高記録 -->
-      <div id="record-hint" class="record-hint hidden mb-3">
-        <div class="flex gap-2">
-          <div class="flex-1 text-center">
-            <div class="text-xs text-gray-400 mb-1">前回</div>
-            <div id="hint-prev" class="text-xs font-medium text-gray-600 mb-1">—</div>
-            <button onclick="copyRecord('prev')" class="copy-btn">複写</button>
+      <div id="schedule-banner" class="hidden card p-3 mb-3 border-blue-200 bg-blue-50">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-xs text-blue-400 mb-0.5">今日のメニュー</div>
+            <div id="schedule-banner-name" class="font-semibold text-blue-700"></div>
           </div>
-          <div class="w-px bg-gray-200"></div>
-          <div class="flex-1 text-center">
-            <div class="text-xs text-amber-500 mb-1">🏆 最高</div>
-            <div id="hint-best" class="text-xs font-medium text-gray-600 mb-1">—</div>
-            <button onclick="copyRecord('best')" class="copy-btn">複写</button>
-          </div>
+          <button onclick="applyScheduledTemplate()" class="btn-primary text-sm px-3 py-1.5 rounded-lg font-semibold">適用</button>
         </div>
       </div>
 
-      <div class="flex gap-2 mb-3">
-        <button id="type-strength" onclick="setActivityType('strength')" class="type-btn active-strength">🏋️ 重量×回数</button>
-        <button id="type-duration" onclick="setActivityType('duration')" class="type-btn">⏱ 時間（分）</button>
-      </div>
+      <div class="card p-4 mb-3">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">種目を選択 / 入力</h2>
+          <div class="flex gap-1">
+            <button onclick="showTemplateSelect()" class="text-xs text-purple-500 border border-purple-200 bg-purple-50 rounded-lg px-2 py-1">テンプレ</button>
+            <button onclick="toggleEditExercises()" id="edit-exercises-btn" class="text-xs text-blue-500 border border-blue-200 bg-blue-50 rounded-lg px-2 py-1">編集</button>
+          </div>
+        </div>
+        <div id="quick-exercises" class="mb-3"></div>
+        <input id="exercise-input" type="text" placeholder="種目名を入力..." class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none mb-2" oninput="onExerciseInput()" />
 
-      <div id="input-strength">
-        <div class="flex gap-2 mb-3">
-          <div class="flex-1">
-            <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
-            <div class="flex gap-1">
-              <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
-              <button id="bodyweight-btn" onclick="toggleBodyweight()" class="rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">自重</button>
+        <div id="record-hint" class="record-hint hidden mb-3">
+          <div class="flex gap-2">
+            <div class="flex-1 text-center">
+              <div class="text-xs text-gray-400 mb-1">前回</div>
+              <div id="hint-prev" class="text-xs font-medium text-gray-600 mb-1">—</div>
+              <button onclick="copyRecord('prev')" class="copy-btn">複写</button>
+            </div>
+            <div class="w-px bg-gray-200"></div>
+            <div class="flex-1 text-center">
+              <div class="text-xs text-amber-500 mb-1">🏆 最高</div>
+              <div id="hint-best" class="text-xs font-medium text-gray-600 mb-1">—</div>
+              <button onclick="copyRecord('best')" class="copy-btn">複写</button>
             </div>
           </div>
-          <div class="flex-1">
-            <label class="text-xs text-gray-400 mb-1 block">回数 (rep)</label>
-            <input id="reps-input" type="number" inputmode="numeric" placeholder="10" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+        </div>
+
+        <div class="flex gap-2 mb-3">
+          <button id="type-strength" onclick="setActivityType('strength')" class="type-btn active-strength">🏋️ 重量×回数</button>
+          <button id="type-duration" onclick="setActivityType('duration')" class="type-btn">⏱ 時間（分）</button>
+        </div>
+
+        <div id="input-strength">
+          <div class="flex gap-2 mb-3">
+            <div class="flex-1">
+              <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
+              <div class="flex gap-1">
+                <input id="weight-input" type="number" inputmode="decimal" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+                <button id="bodyweight-btn" onclick="toggleBodyweight()" class="rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap">自重</button>
+              </div>
+            </div>
+            <div class="flex-1">
+              <label class="text-xs text-gray-400 mb-1 block">回数 (rep)</label>
+              <input id="reps-input" type="number" inputmode="numeric" placeholder="10" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div id="input-duration" class="hidden mb-3">
-        <label class="text-xs text-gray-400 mb-1 block">時間（分）</label>
-        <input id="duration-input" type="number" inputmode="numeric" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
-      </div>
+        <div id="input-duration" class="hidden mb-3">
+          <label class="text-xs text-gray-400 mb-1 block">時間（分）</label>
+          <input id="duration-input" type="number" inputmode="numeric" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+        </div>
 
-      <button onclick="addSet()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">+ セットを追加</button>
-    </div>
-    <div id="today-sets" class="mb-4"></div>
-    <div id="save-section" class="hidden">
-      <button onclick="saveWorkout()" class="btn-primary w-full py-3 rounded-xl text-base font-bold mb-2">記録を保存</button>
+        <button onclick="addSet()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">+ セットを追加</button>
+      </div>
+      <div id="today-sets" class="mb-3"></div>
+      <div id="save-section" class="hidden">
+        <button onclick="saveWorkout()" class="btn-primary w-full py-3 rounded-xl text-base font-bold">記録を保存</button>
+      </div>
     </div>
   </div>
 
@@ -219,7 +222,7 @@
 
   <!-- 履歴タブ -->
   <div id="tab-history" class="content px-4 pt-4 hidden">
-    <button onclick="addRecordForDate(todayStr())" class="w-full mb-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style="background:#3b82f6">＋ 今日の記録を追加</button>
+    <button onclick="openRecordModal(todayStr())" class="w-full mb-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style="background:#3b82f6">＋ 今日の記録を追加</button>
     <div class="grid grid-cols-3 gap-2 mb-4">
       <div class="card p-3 text-center">
         <div id="stat-total" class="text-xl font-bold text-blue-500">0</div>
@@ -379,13 +382,13 @@
     </div>
   </div>
 
+  <!-- フローティング＋ボタン -->
+  <button onclick="openRecordModal(todayStr())" id="fab-add" style="position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));right:20px;width:52px;height:52px;border-radius:50%;background:#3b82f6;color:#fff;font-size:26px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,0.4);z-index:45;border:none;line-height:1">＋</button>
+
   <!-- ナビゲーション -->
   <div class="tab-bar">
     <div class="flex justify-around pt-2 pb-1">
-      <button onclick="showTab('record')" id="nav-record" class="nav-btn active flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
-        <span class="text-xl">✏️</span>記録
-      </button>
-      <button onclick="showTab('history')" id="nav-history" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
+      <button onclick="showTab('history')" id="nav-history" class="nav-btn active flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">📅</span>履歴
       </button>
       <button onclick="showTab('chart')" id="nav-chart" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
@@ -489,16 +492,30 @@ function hideQR() { document.getElementById('qr-modal').classList.add('hidden');
 
 // ===== TAB =====
 function showTab(tab) {
-  ['record','history','chart','template'].forEach(t => {
+  ['history','chart','template'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.add('hidden');
     document.getElementById(`nav-${t}`).classList.remove('active');
   });
   document.getElementById(`tab-${tab}`).classList.remove('hidden');
   document.getElementById(`nav-${tab}`).classList.add('active');
-  if (tab === 'record') { renderQuickExercises(); checkSchedule(); }
   if (tab === 'history') { selectedDate=null; renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
   if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
+}
+function openRecordModal(dateStr) {
+  document.getElementById('record-date').value = dateStr || todayStr();
+  currentSets = [];
+  renderTodaySets();
+  renderQuickExercises();
+  checkSchedule();
+  ['exercise-input','weight-input','reps-input','duration-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('record-hint').classList.add('hidden');
+  setActivityType('strength');
+  document.getElementById('record-modal').classList.remove('hidden');
+}
+function closeRecordModal() {
+  document.getElementById('record-modal').classList.add('hidden');
+  renderCalendar(); renderStats(); renderHistory();
 }
 
 // ===== ACTIVITY TYPE =====
@@ -640,7 +657,7 @@ function saveWorkout() {
   document.getElementById('record-hint').classList.add('hidden');
   const btn = document.querySelector('#save-section button');
   btn.textContent='✓ 保存しました！'; btn.style.opacity='0.7';
-  setTimeout(()=>{ btn.textContent='記録を保存'; btn.style.opacity='1'; },2000);
+  setTimeout(()=>{ btn.textContent='記録を保存'; btn.style.opacity='1'; closeRecordModal(); },1500);
 }
 
 // ===== SCHEDULE =====
@@ -858,9 +875,7 @@ function showDayModal(dateStr){
 function hideDayModal(){document.getElementById('day-modal').classList.add('hidden');}
 function addRecordForDate(dateStr){
   hideDayModal();
-  document.getElementById('record-date').value=dateStr;
-  showTab('record');
-  showToast(`📅 ${formatDate(dateStr)}の記録を追加`);
+  openRecordModal(dateStr);
 }
 
 // ===== HISTORY =====
@@ -1230,7 +1245,7 @@ document.getElementById('record-date').value=todayStr();
 document.getElementById('body-date').value=todayStr();
 initDefaultTemplates();
 handleUrlParams();
-showTab('record');
+showTab('history');
 </script>
 </body>
 </html>
