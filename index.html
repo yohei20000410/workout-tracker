@@ -49,6 +49,10 @@
     .sub-tab.active { background: #fff; color: #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .record-hint { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; }
     .copy-btn { font-size: 11px; color: #3b82f6; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+    .type-btn.active-cardio { border-color: #f97316; color: #f97316; background: #fff7ed; }
+    .equip-btn { flex: 1; padding: 6px; border-radius: 10px; font-size: 11px; font-weight: 600; border: 1.5px solid #e2e8f0; color: #94a3b8; background: #f8fafc; cursor: pointer; }
+    .equip-btn.active-free { border-color: #8b5cf6; color: #8b5cf6; background: #f5f3ff; }
+    .equip-btn.active-machine { border-color: #0ea5e9; color: #0ea5e9; background: #f0f9ff; }
     #toast { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; opacity: 0; transition: all 0.3s ease; z-index: 100; white-space: nowrap; pointer-events: none; }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
@@ -176,10 +180,11 @@
         <div class="flex gap-2 mb-3">
           <button id="type-strength" onclick="setActivityType('strength')" class="type-btn active-strength">🏋️ 重量×回数</button>
           <button id="type-duration" onclick="setActivityType('duration')" class="type-btn">⏱ 時間（分）</button>
+          <button id="type-cardio" onclick="setActivityType('cardio')" class="type-btn">🏃 有酸素</button>
         </div>
 
         <div id="input-strength">
-          <div class="flex gap-2 mb-3">
+          <div class="flex gap-2 mb-2">
             <div class="flex-1">
               <label class="text-xs text-gray-400 mb-1 block">重量 (kg)</label>
               <div class="flex gap-1">
@@ -192,11 +197,32 @@
               <input id="reps-input" type="number" inputmode="numeric" placeholder="10" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
             </div>
           </div>
+          <div class="flex gap-2 mb-3">
+            <button id="equip-free" onclick="setEquipment('free')" class="equip-btn">🏋️ フリーウェイト</button>
+            <button id="equip-machine" onclick="setEquipment('machine')" class="equip-btn">⚙️ マシン</button>
+          </div>
         </div>
 
         <div id="input-duration" class="hidden mb-3">
           <label class="text-xs text-gray-400 mb-1 block">時間（分）</label>
           <input id="duration-input" type="number" inputmode="numeric" placeholder="60" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none" />
+        </div>
+
+        <div id="input-cardio" class="hidden mb-3">
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">時間（分）</label>
+              <input id="cardio-time" type="number" inputmode="numeric" placeholder="30" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">距離 (km)</label>
+              <input id="cardio-distance" type="number" inputmode="decimal" placeholder="5.0" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">消費(kcal)</label>
+              <input id="cardio-calories" type="number" inputmode="numeric" placeholder="300" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+          </div>
         </div>
 
         <button onclick="addSet()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">+ セットを追加</button>
@@ -423,6 +449,7 @@ let selectedDate = null;
 let isBodyweight = false;
 let isEditingExercises = false;
 let currentActivityType = 'strength';
+let currentEquipment = null; // null | 'free' | 'machine'
 let editingTemplateId = null;
 let editingTemplateExercises = [];
 let editingTemplateDays = [];
@@ -435,6 +462,21 @@ const TEMPLATES_KEY = 'wt_templates';
 const BODY_KEY = 'wt_body';
 const DEFAULT_EXERCISES = ['ベンチプレス','スクワット','デッドリフト','ショルダープレス','懸垂','ローイング','アームカール','トライセプス','レッグプレス','ラットプルダウン'];
 const DAY_NAMES = ['日','月','火','水','木','金','土'];
+const EXERCISE_CATEGORIES = {
+  '胸': ['ベンチプレス','インクラインプレス','ダンベルフライ','ケーブルクロスオーバー','ディップス'],
+  '背中': ['デッドリフト','ラットプルダウン','ローイング','懸垂','シーテッドロー','ワンハンドロー','フェイスプル'],
+  '肩': ['ショルダープレス','サイドレイズ','フロントレイズ','リアレイズ','アーノルドプレス'],
+  '腕': ['アームカール','トライセプス','ハンマーカール','スカルクラッシャー','コンセントレーションカール'],
+  '脚': ['スクワット','レッグプレス','レッグカール','レッグエクステンション','カーフレイズ','ルーマニアンデッドリフト','ブルガリアンスクワット'],
+  '体幹': ['プランク','クランチ','レッグレイズ','ロシアンツイスト','ドラゴンフラッグ'],
+  '有酸素': ['ランニング','ウォーキング','サイクリング','ピラティス','ボディーパンプ','HIIT','エリプティカル'],
+};
+function getExerciseCategory(name) {
+  for(const [cat, exs] of Object.entries(EXERCISE_CATEGORIES)) {
+    if(exs.includes(name)) return cat;
+  }
+  return 'その他';
+}
 
 // ===== STORAGE =====
 function getData(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
@@ -514,10 +556,11 @@ function showTab(tab) {
 function openRecordModal(dateStr) {
   document.getElementById('record-date').value = dateStr || todayStr();
   currentSets = [];
+  currentEquipment = null;
   renderTodaySets();
   renderQuickExercises();
   checkSchedule();
-  ['exercise-input','weight-input','reps-input','duration-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['exercise-input','weight-input','reps-input','duration-input','cardio-time','cardio-distance','cardio-calories'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('record-hint').classList.add('hidden');
   setActivityType('strength');
   document.getElementById('record-modal').classList.remove('hidden');
@@ -532,15 +575,30 @@ function setActivityType(type) {
   currentActivityType = type;
   document.getElementById('input-strength').classList.toggle('hidden', type !== 'strength');
   document.getElementById('input-duration').classList.toggle('hidden', type !== 'duration');
+  document.getElementById('input-cardio').classList.toggle('hidden', type !== 'cardio');
   document.getElementById('type-strength').className = `type-btn ${type==='strength'?'active-strength':''}`;
   document.getElementById('type-duration').className = `type-btn ${type==='duration'?'active-duration':''}`;
+  document.getElementById('type-cardio').className = `type-btn ${type==='cardio'?'active-cardio':''}`;
   if (type === 'strength') {
     isBodyweight = false;
     const btn = document.getElementById('bodyweight-btn');
     btn.className = 'rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';
     const wi = document.getElementById('weight-input');
     wi.disabled = false; wi.style.opacity = '1';
+  } else {
+    currentEquipment = null;
+    updateEquipmentUI();
   }
+}
+
+// ===== EQUIPMENT =====
+function setEquipment(type) {
+  currentEquipment = currentEquipment === type ? null : type;
+  updateEquipmentUI();
+}
+function updateEquipmentUI() {
+  document.getElementById('equip-free').className = `equip-btn${currentEquipment==='free'?' active-free':''}`;
+  document.getElementById('equip-machine').className = `equip-btn${currentEquipment==='machine'?' active-machine':''}`;
 }
 
 // ===== BODYWEIGHT =====
@@ -598,11 +656,29 @@ function copyRecord(type) {
 
 // ===== RECORD =====
 function renderQuickExercises() {
-  document.getElementById('quick-exercises').innerHTML = getExercises().map(ex =>
-    isEditingExercises
-      ? `<span class="exercise-chip" style="padding-right:6px">${ex} <button onclick="deleteExercise('${ex}')" class="text-red-400 font-bold ml-1 text-sm">×</button></span>`
-      : `<span class="exercise-chip" onclick="selectExercise('${ex}')">${ex}</span>`
-  ).join('');
+  const exercises = getExercises();
+  if (isEditingExercises) {
+    document.getElementById('quick-exercises').innerHTML = exercises.map(ex =>
+      `<span class="exercise-chip" style="padding-right:6px">${ex} <button onclick="deleteExercise('${ex}')" class="text-red-400 font-bold ml-1 text-sm">×</button></span>`
+    ).join('');
+    return;
+  }
+  // 部位別グループ化
+  const groups = {};
+  exercises.forEach(ex => {
+    const cat = getExerciseCategory(ex);
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(ex);
+  });
+  // カテゴリ表示順
+  const order = ['胸','背中','肩','腕','脚','体幹','有酸素','その他'];
+  let html = '';
+  order.forEach(cat => {
+    if (!groups[cat] || groups[cat].length === 0) return;
+    html += `<div class="text-xs font-semibold text-gray-400 mt-2 mb-1">${cat}</div>`;
+    html += groups[cat].map(ex => `<span class="exercise-chip" onclick="selectExercise('${ex}')">${ex}</span>`).join('');
+  });
+  document.getElementById('quick-exercises').innerHTML = html;
 }
 function selectExercise(name) {
   document.getElementById('exercise-input').value = name;
@@ -611,7 +687,14 @@ function selectExercise(name) {
 function addSet() {
   const exercise = document.getElementById('exercise-input').value.trim();
   if (!exercise) { alert('種目を入力してください'); return; }
-  if (currentActivityType === 'duration') {
+  if (currentActivityType === 'cardio') {
+    const time = parseInt(document.getElementById('cardio-time').value) || null;
+    const distance = parseFloat(document.getElementById('cardio-distance').value) || null;
+    const calories = parseInt(document.getElementById('cardio-calories').value) || null;
+    if (!time && !distance) { alert('時間または距離を入力してください'); return; }
+    currentSets.push({ exercise, type:'cardio', duration:time, distance, calories, id:Date.now() });
+    ['cardio-time','cardio-distance','cardio-calories'].forEach(id=>document.getElementById(id).value='');
+  } else if (currentActivityType === 'duration') {
     const duration = parseInt(document.getElementById('duration-input').value);
     if (isNaN(duration) || duration <= 0) { alert('時間を入力してください'); return; }
     currentSets.push({ exercise, type:'duration', duration, id:Date.now() });
@@ -621,7 +704,7 @@ function addSet() {
     const reps = parseInt(document.getElementById('reps-input').value);
     if (!isBodyweight && (isNaN(weight)||weight<=0)) { alert('重量を入力するか「自重」を選択してください'); return; }
     if (isNaN(reps)||reps<=0) { alert('回数を入力してください'); return; }
-    currentSets.push({ exercise, type:'strength', weight:isBodyweight?null:weight, bodyweight:isBodyweight, reps, id:Date.now() });
+    currentSets.push({ exercise, type:'strength', weight:isBodyweight?null:weight, bodyweight:isBodyweight, reps, equipment:currentEquipment, id:Date.now() });
     document.getElementById('reps-input').value = '';
     document.getElementById('reps-input').focus();
   }
@@ -629,6 +712,23 @@ function addSet() {
   renderTodaySets();
 }
 function removeSet(id) { currentSets=currentSets.filter(s=>s.id!==id); renderTodaySets(); }
+function setLabel(s) {
+  if (s.type==='cardio') {
+    const parts=[];
+    if(s.duration) parts.push(s.duration+'分');
+    if(s.distance) parts.push(s.distance+'km');
+    if(s.calories) parts.push(s.calories+'kcal');
+    return parts.join(' · ');
+  }
+  if (s.type==='duration') return s.duration+'分';
+  return (s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回';
+}
+function equipBadge(s) {
+  if(s.type!=='strength'||!s.equipment) return '';
+  return s.equipment==='machine'
+    ? '<span class="text-xs text-sky-500 bg-sky-50 border border-sky-200 rounded-full px-1.5 py-0.5 ml-1">マシン</span>'
+    : '<span class="text-xs text-violet-500 bg-violet-50 border border-violet-200 rounded-full px-1.5 py-0.5 ml-1">FW</span>';
+}
 function renderTodaySets() {
   const container = document.getElementById('today-sets');
   const saveSection = document.getElementById('save-section');
@@ -637,16 +737,18 @@ function renderTodaySets() {
   const grouped = {};
   currentSets.forEach(s=>{ if(!grouped[s.exercise])grouped[s.exercise]=[]; grouped[s.exercise].push(s); });
   const totalVol = calcVolume(currentSets);
+  const badgeClass = t => t==='duration'?'badge-green':t==='cardio'?'text-xs bg-orange-50 text-orange-500 border border-orange-200 rounded-full px-2 py-0.5 font-semibold':'badge';
+  const badgeLabel = (t,sets) => t==='duration'?'時間':t==='cardio'?'🏃 有酸素':sets.length+'セット';
   container.innerHTML = Object.entries(grouped).map(([ex,sets])=>`
     <div class="card p-4 mb-3 fade-in">
       <div class="flex justify-between items-center mb-2">
         <span class="font-semibold text-gray-800">${ex}</span>
-        <span class="${sets[0].type==='duration'?'badge-green':'badge'}">${sets[0].type==='duration'?'時間':sets.length+'セット'}</span>
+        <span class="${badgeClass(sets[0].type)}">${badgeLabel(sets[0].type,sets)}</span>
       </div>
       ${sets.map((s,i)=>`
         <div class="set-row flex justify-between items-center">
-          <span class="text-sm text-gray-400">${s.type==='duration'?'':i+1+'セット目'}</span>
-          <span class="text-sm font-medium text-gray-700">${s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
+          <span class="text-sm text-gray-400 flex items-center">${s.type==='strength'||s.type==='duration'?i+1+'セット目':''}${equipBadge(s)}</span>
+          <span class="text-sm font-medium text-gray-700">${setLabel(s)}</span>
           <button onclick="removeSet(${s.id})" class="text-red-400 text-xs ml-2 py-1 px-2">✕</button>
         </div>
       `).join('')}
@@ -662,7 +764,8 @@ function saveWorkout() {
   setData(WORKOUTS_KEY, workouts);
   currentSets = [];
   renderTodaySets();
-  ['exercise-input','weight-input','reps-input','duration-input'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  ['exercise-input','weight-input','reps-input','duration-input','cardio-time','cardio-distance','cardio-calories'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  currentEquipment = null; updateEquipmentUI();
   document.getElementById('record-hint').classList.add('hidden');
   const btn = document.querySelector('#save-section button');
   btn.textContent='✓ 保存しました！'; btn.style.opacity='0.7';
@@ -887,8 +990,9 @@ function showDayModal(dateStr){
       return `<div class="card p-3 mb-2">
         <div class="flex flex-wrap gap-1 mb-1">${Object.entries(grouped).map(([ex,sets])=>{
           const isDur=sets[0].type==='duration';
-          const val=isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
-          return `<span class="text-xs text-gray-700">${ex} <span class="${isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+          const isCardio=sets[0].type==='cardio';
+          const val=isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
+          return `<span class="text-xs text-gray-700">${ex} <span class="${isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
         }).join('<span class="text-gray-300 mx-1">·</span>')}</div>
         ${vol>0?`<div class="text-xs text-orange-400">負荷量: ${vol.toLocaleString()}kg</div>`:''}
       </div>`;
@@ -918,8 +1022,9 @@ function renderHistory() {
     const vol=calcVolume(w.sets);
     const summary=Object.entries(grouped).map(([ex,sets])=>{
       const isDur=sets[0].type==='duration';
-      const val=isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
-      return `<span class="text-xs text-gray-600">${ex} <span class="${isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+      const isCardio=sets[0].type==='cardio';
+      const val=isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
+      return `<span class="text-xs text-gray-600">${ex} <span class="${isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
     }).join('<span class="text-gray-300 mx-1">·</span>');
     return `
     <div class="card p-4 mb-3 fade-in">
@@ -940,9 +1045,9 @@ function renderHistory() {
               <div class="text-xs font-semibold text-blue-500 mb-1">${ex}</div>
               ${sets.map((s,i)=>`
                 <div class="set-row flex justify-between text-xs">
-                  <span class="text-gray-400">${s.type==='duration'?'':i+1+'セット目'}</span>
-                  <span class="text-gray-700">${s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
-                  <span class="text-gray-400">${s.type==='duration'?'':s.bodyweight?'':(s.weight*s.reps).toFixed(0)+'kg vol'}</span>
+                  <span class="text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='duration'?'':i+1+'セット目'}${s.type==='strength'&&s.equipment?`<span class="ml-1 ${s.equipment==='machine'?'text-sky-500':'text-violet-500'}">${s.equipment==='machine'?'マシン':'FW'}</span>`:''}</span>
+                  <span class="text-gray-700">${s.type==='cardio'?setLabel(s):s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
+                  <span class="text-gray-400">${s.type==='strength'&&!s.bodyweight&&s.weight&&s.reps?(s.weight*s.reps).toFixed(0)+'kg vol':''}</span>
                 </div>`).join('')}
             </div>`).join('')}
         </div>
@@ -1078,7 +1183,10 @@ function saveBodyData(){
   const date=document.getElementById('body-date').value||todayStr();
   const existIdx=body.findIndex(b=>b.date===date);
   const record={id:Date.now(),date,weight,fat,fatMass,muscle,skeletal,visceral,bmr,trunk,rArm,lArm,rLeg,lLeg};
-  if(existIdx>=0)body[existIdx]=record; else body.push(record);
+  if(existIdx>=0){
+    // 入力されたフィールドだけ上書き（空欄は既存値を保持）
+    Object.entries(record).forEach(([k,v])=>{ if(v!==null) body[existIdx][k]=v; });
+  } else { body.push(record); }
   body.sort((a,b)=>a.date.localeCompare(b.date));
   setData(BODY_KEY,body);
   ['body-weight','body-fat','body-fat-mass','body-muscle','body-skeletal','body-visceral','body-bmr','body-trunk','body-r-arm','body-l-arm','body-r-leg','body-l-leg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
