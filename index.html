@@ -222,6 +222,15 @@
 
   <!-- 履歴タブ -->
   <div id="tab-history" class="content px-4 pt-4 hidden">
+    <div id="home-schedule-banner" class="hidden card p-3 mb-3 border-blue-200 bg-blue-50">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="text-xs text-blue-400 mb-0.5">今日のメニュー</div>
+          <div id="home-schedule-name" class="font-semibold text-blue-700"></div>
+        </div>
+        <button onclick="openModalWithSchedule()" class="btn-primary text-sm px-3 py-1.5 rounded-lg font-semibold">適用</button>
+      </div>
+    </div>
     <button onclick="openRecordModal(todayStr())" class="w-full mb-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style="background:#3b82f6">＋ 今日の記録を追加</button>
     <div class="grid grid-cols-3 gap-2 mb-4">
       <div class="card p-3 text-center">
@@ -389,7 +398,7 @@
   <div class="tab-bar">
     <div class="flex justify-around pt-2 pb-1">
       <button onclick="showTab('history')" id="nav-history" class="nav-btn active flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
-        <span class="text-xl">📅</span>履歴
+        <span class="text-xl">🏠</span>ホーム
       </button>
       <button onclick="showTab('chart')" id="nav-chart" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">📈</span>グラフ
@@ -498,7 +507,7 @@ function showTab(tab) {
   });
   document.getElementById(`tab-${tab}`).classList.remove('hidden');
   document.getElementById(`nav-${tab}`).classList.add('active');
-  if (tab === 'history') { selectedDate=null; renderCalendar(); renderStats(); renderHistory(); }
+  if (tab === 'history') { selectedDate=null; checkHomeSchedule(); renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
   if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
 }
@@ -661,6 +670,22 @@ function saveWorkout() {
 }
 
 // ===== SCHEDULE =====
+function checkHomeSchedule() {
+  const today = new Date().getDay();
+  const templates = getData(TEMPLATES_KEY);
+  const scheduled = templates.find(t => t.days && t.days.includes(today));
+  const banner = document.getElementById('home-schedule-banner');
+  if (scheduled) {
+    document.getElementById('home-schedule-name').textContent = scheduled.name;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+function openModalWithSchedule() {
+  openRecordModal(todayStr());
+  setTimeout(() => applyScheduledTemplate(), 80);
+}
 function checkSchedule() {
   const today = new Date().getDay();
   const templates = getData(TEMPLATES_KEY);
