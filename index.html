@@ -479,8 +479,8 @@ function getExerciseCategory(name) {
 }
 
 // ===== STORAGE =====
-function getData(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
-function setData(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function getData(key) { try { const v=localStorage.getItem(key); return v?JSON.parse(v)||[]:[];} catch { return []; } }
+function setData(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { alert('保存に失敗しました（ストレージ容量不足の可能性）\n'+e.message); } }
 
 // ===== VOLUME =====
 function calcVolume(sets) {
@@ -1184,17 +1184,19 @@ function saveBodyData(){
   const existIdx=body.findIndex(b=>b.date===date);
   const record={id:Date.now(),date,weight,fat,fatMass,muscle,skeletal,visceral,bmr,trunk,rArm,lArm,rLeg,lLeg};
   if(existIdx>=0){
-    // 入力されたフィールドだけ上書き（空欄は既存値を保持）
-    Object.entries(record).forEach(([k,v])=>{ if(v!==null) body[existIdx][k]=v; });
+    // 入力されたフィールドだけ上書き（空欄は既存値を保持、idは変えない）
+    Object.entries(record).forEach(([k,v])=>{ if(k!=='id' && v!==null) body[existIdx][k]=v; });
   } else { body.push(record); }
-  body.sort((a,b)=>a.date.localeCompare(b.date));
-  setData(BODY_KEY,body);
+  body.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  setData(BODY_KEY, body);
+  // 保存確認：読み戻して件数チェック
+  const savedCount = getData(BODY_KEY).length;
   ['body-weight','body-fat','body-fat-mass','body-muscle','body-skeletal','body-visceral','body-bmr','body-trunk','body-r-arm','body-l-arm','body-r-leg','body-l-leg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  // 日付を今日にリセット（別日付で続けて入力したとき上書きされるバグ防止）
   document.getElementById('body-date').value=todayStr();
   const btn=document.querySelector('#section-body button.btn-primary');
   btn.textContent=`✓ ${formatDate(date)} を記録しました！`;btn.style.opacity='0.7';
   setTimeout(()=>{btn.textContent='記録する';btn.style.opacity='1';},2500);
+  showToast(`✅ ${formatDate(date)} を記録（累計 ${savedCount}件）`);
   initBodyChart();
 }
 function setBodyMetric(metric){
@@ -1223,7 +1225,7 @@ function renderBodyHistory(){
   const body=getData(BODY_KEY);
   const container=document.getElementById('body-history');
   if(body.length===0){container.innerHTML='';return;}
-  container.innerHTML=[...body].reverse().slice(0,10).map(b=>`
+  container.innerHTML=[...body].reverse().map(b=>`
     <div class="card p-3 mb-2">
       <div class="flex justify-between items-center mb-1">
         <span class="text-sm font-semibold text-gray-700">${formatDate(b.date)}</span>
