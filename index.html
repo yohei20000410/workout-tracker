@@ -419,6 +419,18 @@
       <div id="schedule-list"></div>
       <p class="text-xs text-gray-400 mt-3">テンプレート作成時に曜日を設定するとその曜日に自動提案されます。</p>
     </div>
+    <div class="card p-4 mt-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-3">💾 バックアップ / 復元</h3>
+      <p class="text-xs text-gray-400 mb-3">定期的にエクスポートしておくと、URLが変わっても安心です。</p>
+      <div class="flex gap-2 mb-2">
+        <button onclick="exportData()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 エクスポート</button>
+        <label class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50 text-center cursor-pointer">
+          📥 インポート
+          <input type="file" accept=".json" onchange="importData(event)" class="hidden" />
+        </label>
+      </div>
+      <div id="backup-status" class="text-xs text-gray-400 text-center"></div>
+    </div>
   </div>
 
   <!-- フローティング＋ボタン -->
@@ -1324,6 +1336,59 @@ function initDefaultTemplates(){
   defaults.forEach(d=>{if(!names.includes(d.name)){templates.push(d);updated=true;}});
   if(updated)setData(TEMPLATES_KEY,templates);
 }
+// ===== BACKUP =====
+function exportData() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    workouts:  getData(WORKOUTS_KEY),
+    body:      getData(BODY_KEY),
+    templates: getData(TEMPLATES_KEY),
+    exercises: getData(EXERCISES_KEY),
+    hidden:    getData(HIDDEN_EXERCISES_KEY),
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `kintore-backup-${date}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  document.getElementById('backup-status').textContent = `✅ エクスポート完了（筋トレ${backup.workouts.length}件・体組成${backup.body.length}件）`;
+}
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      // マージ（既存データと重複しないものを追加）
+      function mergeArray(key, existing, incoming, idField='date') {
+        const existingIds = new Set(existing.map(x => x[idField]));
+        const newItems = incoming.filter(x => !existingIds.has(x[idField]));
+        const merged = [...existing, ...newItems];
+        setData(key, merged);
+        return newItems.length;
+      }
+      const w = mergeArray(WORKOUTS_KEY,  getData(WORKOUTS_KEY),  backup.workouts  || []);
+      const b = mergeArray(BODY_KEY,      getData(BODY_KEY),      backup.body      || []);
+      const t = mergeArray(TEMPLATES_KEY, getData(TEMPLATES_KEY), backup.templates || [], 'id');
+      // 種目リストはそのまま上書きマージ
+      const exMerged = [...new Set([...getData(EXERCISES_KEY), ...(backup.exercises||[])])];
+      setData(EXERCISES_KEY, exMerged);
+      const msg = `✅ インポート完了 — 筋トレ+${w}件・体組成+${b}件・テンプレ+${t}件`;
+      document.getElementById('backup-status').textContent = msg;
+      showToast(msg);
+      renderCalendar(); renderStats(); renderHistory();
+    } catch(err) {
+      document.getElementById('backup-status').textContent = '❌ 読み込み失敗：' + err.message;
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 // ===== TOAST =====
 function showToast(msg, duration=3000) {
   const t = document.getElementById('toast');

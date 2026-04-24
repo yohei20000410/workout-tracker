@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>データ復旧ツール</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #f1f5f9; color: #1e293b;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; margin: 0; padding: 16px; box-sizing: border-box; }
+    .card { background: #fff; border-radius: 16px; padding: 28px 24px;
+            max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+    p  { font-size: 14px; color: #64748b; margin: 0 0 20px; line-height: 1.6; }
+    button { width: 100%; padding: 14px; border-radius: 12px; border: none;
+             background: #3b82f6; color: #fff; font-size: 16px; font-weight: 700;
+             cursor: pointer; margin-bottom: 12px; }
+    button:active { background: #2563eb; }
+    .result { font-size: 13px; color: #16a34a; background: #f0fdf4;
+              border: 1px solid #bbf7d0; border-radius: 10px;
+              padding: 12px; margin-top: 12px; display: none; word-break: break-all; }
+    .empty  { color: #ef4444; background: #fef2f2; border-color: #fecaca; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>💾 データ復旧ツール</h1>
+  <p>このページを<strong>旧Netlifyのブラウザ</strong>（Safari）で開き、「データをエクスポート」を押すとJSONファイルがダウンロードされます。<br><br>その後、新しいGitHub Pagesのアプリの テンプレ → バックアップ → インポートで取り込んでください。</p>
+  <button onclick="doExport()">📤 データをエクスポート</button>
+  <div id="result" class="result"></div>
+</div>
+<script>
+const KEYS = {
+  workouts:  'wt_workouts',
+  body:      'wt_body',
+  templates: 'wt_templates',
+  exercises: 'wt_exercises',
+  hidden:    'wt_hidden_exercises',
+};
+function doExport() {
+  try {
+    const backup = { version: 1, exportedAt: new Date().toISOString() };
+    let total = 0;
+    for (const [k, key] of Object.entries(KEYS)) {
+      const raw = localStorage.getItem(key);
+      backup[k] = raw ? JSON.parse(raw) : [];
+      total += backup[k].length;
+    }
+    const res = document.getElementById('result');
+    if (total === 0) {
+      res.style.display = 'block';
+      res.className = 'result empty';
+      res.textContent = '⚠️ このブラウザ/URLにはデータがありませんでした。';
+      return;
+    }
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kintore-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    res.style.display = 'block';
+    res.className = 'result';
+    res.textContent = `✅ エクスポート完了！ 筋トレ${backup.workouts.length}件・体組成${backup.body.length}件・テンプレ${backup.templates.length}件`;
+  } catch(e) {
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').className = 'result empty';
+    document.getElementById('result').textContent = 'エラー: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
