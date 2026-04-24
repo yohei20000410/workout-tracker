@@ -419,10 +419,15 @@
       <div id="schedule-list"></div>
       <p class="text-xs text-gray-400 mt-3">テンプレート作成時に曜日を設定するとその曜日に自動提案されます。</p>
     </div>
-    <div class="card p-4 mt-4">
-      <h3 class="text-sm font-semibold text-gray-600 mb-3">🖼️ アプリアイコン</h3>
-      <p class="text-xs text-gray-400 mb-3">画像を選ぶとアイコンが変わります。変更後はホーム画面から再追加してください。</p>
-      <div class="flex items-center gap-3 mb-3">
+  </div>
+
+  <!-- 設定タブ -->
+  <div id="tab-settings" class="content px-4 pt-4 hidden">
+    <h2 class="text-base font-semibold text-gray-700 mb-4">設定</h2>
+    <div class="card p-4 mb-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-1">🖼️ アプリアイコン</h3>
+      <p class="text-xs text-gray-400 mb-3">変更後はホーム画面から再追加してください。</p>
+      <div class="flex items-center gap-3 mb-2">
         <img id="icon-preview" src="" alt="" class="hidden w-16 h-16 rounded-2xl object-cover border border-gray-200 shadow" />
         <div class="flex-1">
           <label class="block w-full py-2.5 rounded-xl text-sm font-semibold border border-purple-200 text-purple-600 bg-purple-50 text-center cursor-pointer">
@@ -434,9 +439,9 @@
       </div>
       <div id="icon-status" class="text-xs text-gray-400 text-center"></div>
     </div>
-    <div class="card p-4 mt-4">
-      <h3 class="text-sm font-semibold text-gray-600 mb-3">💾 バックアップ / 復元</h3>
-      <p class="text-xs text-gray-400 mb-3">定期的にエクスポートしておくと、URLが変わっても安心です。</p>
+    <div class="card p-4 mb-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-1">💾 バックアップ / 復元</h3>
+      <p class="text-xs text-gray-400 mb-3">定期的にエクスポートしておくと安心です。</p>
       <div class="flex gap-2 mb-2">
         <button onclick="exportData()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 エクスポート</button>
         <label class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50 text-center cursor-pointer">
@@ -462,6 +467,9 @@
       </button>
       <button onclick="showTab('template')" id="nav-template" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
         <span class="text-xl">📋</span>テンプレ
+      </button>
+      <button onclick="showTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-0.5 px-3 pt-1 pb-2 text-xs font-medium">
+        <span class="text-xl">⚙️</span>設定
       </button>
     </div>
   </div>
@@ -574,7 +582,7 @@ function hideQR() { document.getElementById('qr-modal').classList.add('hidden');
 
 // ===== TAB =====
 function showTab(tab) {
-  ['history','chart','template'].forEach(t => {
+  ['history','chart','template','settings'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.add('hidden');
     document.getElementById(`nav-${t}`).classList.remove('active');
   });
@@ -582,7 +590,8 @@ function showTab(tab) {
   document.getElementById(`nav-${tab}`).classList.add('active');
   if (tab === 'history') { selectedDate=null; checkHomeSchedule(); renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
-  if (tab === 'template') { renderTemplateList(); renderScheduleList(); applyCustomIcon(); }
+  if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
+  if (tab === 'settings') applyCustomIcon();
 }
 function openRecordModal(dateStr) {
   document.getElementById('record-date').value = dateStr || todayStr();
