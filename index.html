@@ -420,6 +420,21 @@
       <p class="text-xs text-gray-400 mt-3">テンプレート作成時に曜日を設定するとその曜日に自動提案されます。</p>
     </div>
     <div class="card p-4 mt-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-3">🖼️ アプリアイコン</h3>
+      <p class="text-xs text-gray-400 mb-3">画像を選ぶとアイコンが変わります。変更後はホーム画面から再追加してください。</p>
+      <div class="flex items-center gap-3 mb-3">
+        <img id="icon-preview" src="" alt="" class="hidden w-16 h-16 rounded-2xl object-cover border border-gray-200 shadow" />
+        <div class="flex-1">
+          <label class="block w-full py-2.5 rounded-xl text-sm font-semibold border border-purple-200 text-purple-600 bg-purple-50 text-center cursor-pointer">
+            📷 画像を選ぶ
+            <input type="file" accept="image/*" onchange="handleIconUpload(event)" class="hidden" />
+          </label>
+          <button onclick="resetIcon()" class="mt-2 w-full py-2 rounded-xl text-xs text-gray-400 border border-gray-200 bg-gray-50">デフォルトに戻す</button>
+        </div>
+      </div>
+      <div id="icon-status" class="text-xs text-gray-400 text-center"></div>
+    </div>
+    <div class="card p-4 mt-4">
       <h3 class="text-sm font-semibold text-gray-600 mb-3">💾 バックアップ / 復元</h3>
       <p class="text-xs text-gray-400 mb-3">定期的にエクスポートしておくと、URLが変わっても安心です。</p>
       <div class="flex gap-2 mb-2">
@@ -567,7 +582,7 @@ function showTab(tab) {
   document.getElementById(`nav-${tab}`).classList.add('active');
   if (tab === 'history') { selectedDate=null; checkHomeSchedule(); renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
-  if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
+  if (tab === 'template') { renderTemplateList(); renderScheduleList(); applyCustomIcon(); }
 }
 function openRecordModal(dateStr) {
   document.getElementById('record-date').value = dateStr || todayStr();
@@ -1336,6 +1351,51 @@ function initDefaultTemplates(){
   defaults.forEach(d=>{if(!names.includes(d.name)){templates.push(d);updated=true;}});
   if(updated)setData(TEMPLATES_KEY,templates);
 }
+// ===== ICON =====
+const ICON_KEY = 'wt_custom_icon';
+function applyCustomIcon() {
+  const data = localStorage.getItem(ICON_KEY);
+  const link = document.querySelector('link[rel="apple-touch-icon"]');
+  if (data) {
+    if (link) link.href = data;
+    const preview = document.getElementById('icon-preview');
+    if (preview) { preview.src = data; preview.classList.remove('hidden'); }
+  }
+}
+function handleIconUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new window.Image();
+    img.onload = () => {
+      // 正方形にクロップして512×512にリサイズ
+      const canvas = document.createElement('canvas');
+      canvas.width = 512; canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      const size = Math.min(img.width, img.height);
+      const sx = (img.width  - size) / 2;
+      const sy = (img.height - size) / 2;
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 512, 512);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      localStorage.setItem(ICON_KEY, dataUrl);
+      applyCustomIcon();
+      document.getElementById('icon-status').textContent = '✅ 変更しました。ホーム画面から再追加すると反映されます。';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+function resetIcon() {
+  localStorage.removeItem(ICON_KEY);
+  const link = document.querySelector('link[rel="apple-touch-icon"]');
+  if (link) link.href = 'icon-192-v2.png';
+  const preview = document.getElementById('icon-preview');
+  if (preview) { preview.src = ''; preview.classList.add('hidden'); }
+  document.getElementById('icon-status').textContent = 'デフォルトに戻しました。ホーム画面から再追加すると反映されます。';
+}
+
 // ===== BACKUP =====
 function exportData() {
   const backup = {
@@ -1456,6 +1516,7 @@ document.getElementById('today-label').textContent=(()=>{const d=new Date();retu
 document.getElementById('record-date').value=todayStr();
 document.getElementById('body-date').value=todayStr();
 initDefaultTemplates();
+applyCustomIcon();
 handleUrlParams();
 showTab('history');
 </script>
