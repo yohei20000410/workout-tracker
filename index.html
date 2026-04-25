@@ -80,6 +80,20 @@
     </div>
   </div>
 
+  <!-- クラウド同期モーダル -->
+  <div id="cloud-modal" class="hidden modal-overlay" onclick="if(event.target===this)closeCloudModal()">
+    <div class="modal-sheet">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-800">☁️ クラウド同期設定</h3>
+        <button onclick="closeCloudModal()" class="text-gray-400 text-xl px-1">✕</button>
+      </div>
+      <p class="text-xs text-gray-400 mb-3">jsonbin.io の Master Key を貼り付けてください。</p>
+      <label class="text-xs text-gray-400 mb-1 block">Master Key</label>
+      <input id="cloud-key-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="$2a$10$..." class="w-full rounded-xl px-3 py-3 text-sm border outline-none mb-4" />
+      <button onclick="saveCloudKeyFromModal()" class="btn-primary w-full py-3 rounded-xl font-bold">接続する</button>
+    </div>
+  </div>
+
   <!-- テンプレート選択モーダル -->
   <div id="template-select-modal" class="hidden modal-overlay" onclick="if(event.target===this)hideTemplateSelect()">
     <div class="modal-sheet">
@@ -466,7 +480,7 @@
       <h3 class="text-sm font-semibold text-gray-600 mb-1">☁️ クラウド同期</h3>
       <p class="text-xs text-gray-400 mb-3"><a href="https://jsonbin.io" target="_blank" class="text-blue-400 underline">jsonbin.io</a> の無料アカウントで自動同期。スマホ・PCのデータを統一できます。</p>
       <div id="cloud-key-display" class="mb-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">未設定</div>
-      <button onclick="promptCloudKey()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold mb-2">🔑 Master Keyを入力</button>
+      <button onclick="openCloudModal()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold mb-2">🔑 Master Keyを入力</button>
       <div class="flex gap-2 mb-2">
         <button onclick="syncToCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 アップロード</button>
         <button onclick="syncFromCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50">📥 ダウンロード</button>
@@ -1571,12 +1585,20 @@ function setCloudStatus(msg) {
   const el = document.getElementById('cloud-status');
   if (el) el.textContent = msg;
 }
-function promptCloudKey() {
+function openCloudModal() {
   const current = localStorage.getItem(CLOUD_KEY_STORAGE);
-  const key = prompt('jsonbin.io の Master Key を貼り付けてください' + (current ? '\n（現在設定済み）' : ''));
-  if (key === null) return;
-  if (!key.trim()) { alert('Master Keyを入力してください'); return; }
-  localStorage.setItem(CLOUD_KEY_STORAGE, key.trim());
+  document.getElementById('cloud-key-input').value = current || '';
+  document.getElementById('cloud-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cloud-key-input').focus(), 100);
+}
+function closeCloudModal() {
+  document.getElementById('cloud-modal').classList.add('hidden');
+}
+function saveCloudKeyFromModal() {
+  const key = document.getElementById('cloud-key-input').value.trim();
+  if (!key) { alert('Master Keyを入力してください'); return; }
+  localStorage.setItem(CLOUD_KEY_STORAGE, key);
+  closeCloudModal();
   showToast('APIキーを保存しました');
   initCloudStatus();
   syncToCloud(true);
