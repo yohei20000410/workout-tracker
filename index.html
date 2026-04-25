@@ -227,7 +227,29 @@
           </div>
         </div>
 
-        <div class="mb-3">
+        <div id="input-bodypump" class="hidden mb-3">
+          <div class="text-xs font-semibold text-purple-500 mb-2">💪 ボディーパンプ 重量入力</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">ウォーミングアップ (kg)</label>
+              <input id="bp-warmup" type="number" inputmode="decimal" placeholder="5.0" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">脚 (kg)</label>
+              <input id="bp-legs" type="number" inputmode="decimal" placeholder="20.0" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">胸 (kg)</label>
+              <input id="bp-chest" type="number" inputmode="decimal" placeholder="15.0" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-1 block">背中 (kg)</label>
+              <input id="bp-back" type="number" inputmode="decimal" placeholder="15.0" class="w-full rounded-xl px-2 py-2.5 text-sm border outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div id="normal-comment" class="mb-3">
           <input id="set-comment" type="text" placeholder="💬 部位・メモ（例: 脚, 胸, 背中）" class="w-full rounded-xl px-3 py-2.5 text-sm border outline-none text-gray-600" style="font-size:13px" />
         </div>
         <button onclick="addSet()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold">+ セットを追加</button>
@@ -603,8 +625,11 @@ function openRecordModal(dateStr) {
   renderTodaySets();
   renderQuickExercises();
   checkSchedule();
-  ['exercise-input','weight-input','reps-input','duration-input','cardio-time','cardio-distance','cardio-calories','set-comment'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['exercise-input','weight-input','reps-input','duration-input','cardio-time','cardio-distance','cardio-calories','set-comment','bp-warmup','bp-legs','bp-chest','bp-back'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('record-hint').classList.add('hidden');
+  document.getElementById('input-bodypump').classList.add('hidden');
+  document.getElementById('normal-comment').classList.remove('hidden');
+  document.getElementById('type-strength').parentElement.classList.remove('hidden');
   setActivityType('strength');
   document.getElementById('record-modal').classList.remove('hidden');
 }
@@ -662,6 +687,7 @@ function toggleBodyweight() {
 function onExerciseInput() {
   const name = document.getElementById('exercise-input').value.trim();
   updateRecordHint(name);
+  checkBodyPumpMode(name);
 }
 function updateRecordHint(name) {
   const hint = document.getElementById('record-hint');
@@ -726,10 +752,37 @@ function renderQuickExercises() {
 function selectExercise(name) {
   document.getElementById('exercise-input').value = name;
   updateRecordHint(name);
+  checkBodyPumpMode(name);
+}
+function checkBodyPumpMode(name) {
+  const isBP = name === 'ボディーパンプ';
+  document.getElementById('input-bodypump').classList.toggle('hidden', !isBP);
+  document.getElementById('normal-comment').classList.toggle('hidden', isBP);
+  const typeBtns = document.getElementById('type-strength').parentElement;
+  typeBtns.classList.toggle('hidden', isBP);
+  if (isBP) {
+    document.getElementById('input-strength').classList.add('hidden');
+    document.getElementById('input-duration').classList.add('hidden');
+    document.getElementById('input-cardio').classList.add('hidden');
+  } else {
+    setActivityType(currentActivityType);
+  }
 }
 function addSet() {
   const exercise = document.getElementById('exercise-input').value.trim();
   if (!exercise) { alert('種目を入力してください'); return; }
+  if (exercise === 'ボディーパンプ') {
+    const warmup = parseFloat(document.getElementById('bp-warmup').value) || null;
+    const legs   = parseFloat(document.getElementById('bp-legs').value)   || null;
+    const chest  = parseFloat(document.getElementById('bp-chest').value)  || null;
+    const back   = parseFloat(document.getElementById('bp-back').value)   || null;
+    if (!warmup && !legs && !chest && !back) { alert('重量を1つ以上入力してください'); return; }
+    currentSets.push({ exercise, type:'bodypump', sections:{warmup,legs,chest,back}, id:Date.now() });
+    ['bp-warmup','bp-legs','bp-chest','bp-back'].forEach(id=>document.getElementById(id).value='');
+    addExerciseToList(exercise);
+    renderTodaySets();
+    return;
+  }
   const comment = document.getElementById('set-comment').value.trim() || null;
   if (currentActivityType === 'cardio') {
     const time = parseInt(document.getElementById('cardio-time').value) || null;
@@ -758,6 +811,10 @@ function addSet() {
 }
 function removeSet(id) { currentSets=currentSets.filter(s=>s.id!==id); renderTodaySets(); }
 function setLabel(s) {
+  if (s.type==='bodypump') {
+    const sec=s.sections||{};
+    return [sec.warmup?`WU:${sec.warmup}kg`:null, sec.legs?`脚:${sec.legs}kg`:null, sec.chest?`胸:${sec.chest}kg`:null, sec.back?`背:${sec.back}kg`:null].filter(Boolean).join(' · ');
+  }
   if (s.type==='cardio') {
     const parts=[];
     if(s.duration) parts.push(s.duration+'分');
@@ -782,8 +839,8 @@ function renderTodaySets() {
   const grouped = {};
   currentSets.forEach(s=>{ if(!grouped[s.exercise])grouped[s.exercise]=[]; grouped[s.exercise].push(s); });
   const totalVol = calcVolume(currentSets);
-  const badgeClass = t => t==='duration'?'badge-green':t==='cardio'?'text-xs bg-orange-50 text-orange-500 border border-orange-200 rounded-full px-2 py-0.5 font-semibold':'badge';
-  const badgeLabel = (t,sets) => t==='duration'?'時間':t==='cardio'?'🏃 有酸素':sets.length+'セット';
+  const badgeClass = t => t==='duration'?'badge-green':t==='cardio'?'text-xs bg-orange-50 text-orange-500 border border-orange-200 rounded-full px-2 py-0.5 font-semibold':t==='bodypump'?'text-xs bg-purple-50 text-purple-500 border border-purple-200 rounded-full px-2 py-0.5 font-semibold':'badge';
+  const badgeLabel = (t,sets) => t==='duration'?'時間':t==='cardio'?'🏃 有酸素':t==='bodypump'?'💪 BP':sets.length+'セット';
   container.innerHTML = Object.entries(grouped).map(([ex,sets])=>`
     <div class="card p-4 mb-3 fade-in">
       <div class="flex justify-between items-center mb-2">
@@ -793,7 +850,7 @@ function renderTodaySets() {
       ${sets.map((s,i)=>`
         <div class="set-row">
           <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='duration'?'':i+1+'セット目'}${equipBadge(s)}</span>
+            <span class="text-sm text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='bodypump'?'💪':s.type==='duration'?'':i+1+'セット目'}${equipBadge(s)}</span>
             <span class="text-sm font-medium text-gray-700">${setLabel(s)}</span>
             <button onclick="removeSet(${s.id})" class="text-red-400 text-xs ml-2 py-1 px-2">✕</button>
           </div>
@@ -1045,8 +1102,9 @@ function showDayModal(dateStr){
         <div class="flex flex-wrap gap-1 mb-1">${Object.entries(grouped).map(([ex,sets])=>{
           const isDur=sets[0].type==='duration';
           const isCardio=sets[0].type==='cardio';
-          const val=isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
-          return `<span class="text-xs text-gray-700">${ex} <span class="${isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+          const isBP=sets[0].type==='bodypump';
+          const val=isBP?setLabel(sets[0]):isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
+          return `<span class="text-xs text-gray-700">${ex} <span class="${isBP?'text-purple-500':isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
         }).join('<span class="text-gray-300 mx-1">·</span>')}</div>
         ${vol>0?`<div class="text-xs text-orange-400">負荷量: ${vol.toLocaleString()}kg</div>`:''}
       </div>`;
@@ -1077,8 +1135,9 @@ function renderHistory() {
     const summary=Object.entries(grouped).map(([ex,sets])=>{
       const isDur=sets[0].type==='duration';
       const isCardio=sets[0].type==='cardio';
-      const val=isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
-      return `<span class="text-xs text-gray-600">${ex} <span class="${isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
+      const isBP=sets[0].type==='bodypump';
+      const val=isBP?setLabel(sets[0]):isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
+      return `<span class="text-xs text-gray-600">${ex} <span class="${isBP?'text-purple-500':isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
     }).join('<span class="text-gray-300 mx-1">·</span>');
     return `
     <div class="card p-4 mb-3 fade-in">
@@ -1101,8 +1160,8 @@ function renderHistory() {
               ${sets.map((s,i)=>`
                 <div class="set-row">
                   <div class="flex justify-between text-xs">
-                    <span class="text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='duration'?'':i+1+'セット目'}${s.type==='strength'&&s.equipment?`<span class="ml-1 ${s.equipment==='machine'?'text-sky-500':'text-violet-500'}">${s.equipment==='machine'?'マシン':'FW'}</span>`:''}</span>
-                    <span class="text-gray-700">${s.type==='cardio'?setLabel(s):s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
+                    <span class="text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='bodypump'?'💪':s.type==='duration'?'':i+1+'セット目'}${s.type==='strength'&&s.equipment?`<span class="ml-1 ${s.equipment==='machine'?'text-sky-500':'text-violet-500'}">${s.equipment==='machine'?'マシン':'FW'}</span>`:''}</span>
+                    <span class="text-gray-700">${s.type==='bodypump'?setLabel(s):s.type==='cardio'?setLabel(s):s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
                     <span class="text-gray-400">${s.type==='strength'&&!s.bodyweight&&s.weight&&s.reps?(s.weight*s.reps).toFixed(0)+'kg vol':''}</span>
                   </div>
                   ${s.comment?`<div class="text-xs text-gray-400 mt-0.5">💬 ${s.comment}</div>`:''}
