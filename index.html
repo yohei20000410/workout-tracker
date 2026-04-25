@@ -516,6 +516,7 @@ let editingTemplateId = null;
 let editingTemplateExercises = [];
 let editingTemplateDays = [];
 let editingWorkoutId = null;
+let editingSetId = null;
 
 // ===== KEYS =====
 const EXERCISES_KEY = 'wt_exercises';
@@ -631,6 +632,8 @@ function openRecordModal(dateStr) {
   document.getElementById('input-bodypump').classList.add('hidden');
   document.getElementById('normal-comment').classList.remove('hidden');
   document.getElementById('type-strength').parentElement.classList.remove('hidden');
+  editingSetId = null;
+  document.querySelector('[onclick="addSet()"]').textContent = '+ セットを追加';
   setActivityType('strength');
   document.getElementById('record-modal').classList.remove('hidden');
 }
@@ -772,45 +775,88 @@ function checkBodyPumpMode(name) {
 function addSet() {
   const exercise = document.getElementById('exercise-input').value.trim();
   if (!exercise) { alert('種目を入力してください'); return; }
+  const keepId = editingSetId || Date.now();
+  let newSet = null;
   if (exercise === 'ボディーパンプ') {
     const warmup = parseFloat(document.getElementById('bp-warmup').value) || null;
     const legs   = parseFloat(document.getElementById('bp-legs').value)   || null;
     const chest  = parseFloat(document.getElementById('bp-chest').value)  || null;
     const back   = parseFloat(document.getElementById('bp-back').value)   || null;
     if (!warmup && !legs && !chest && !back) { alert('重量を1つ以上入力してください'); return; }
-    currentSets.push({ exercise, type:'bodypump', sections:{warmup,legs,chest,back}, id:Date.now() });
+    newSet = { exercise, type:'bodypump', sections:{warmup,legs,chest,back}, id:keepId };
     ['bp-warmup','bp-legs','bp-chest','bp-back'].forEach(id=>document.getElementById(id).value='');
-    addExerciseToList(exercise);
-    renderTodaySets();
-    return;
-  }
-  const comment = document.getElementById('set-comment').value.trim() || null;
-  if (currentActivityType === 'cardio') {
-    const time = parseInt(document.getElementById('cardio-time').value) || null;
-    const distance = parseFloat(document.getElementById('cardio-distance').value) || null;
-    const calories = parseInt(document.getElementById('cardio-calories').value) || null;
-    if (!time && !distance) { alert('時間または距離を入力してください'); return; }
-    currentSets.push({ exercise, type:'cardio', duration:time, distance, calories, comment, id:Date.now() });
-    ['cardio-time','cardio-distance','cardio-calories'].forEach(id=>document.getElementById(id).value='');
-  } else if (currentActivityType === 'duration') {
-    const duration = parseInt(document.getElementById('duration-input').value);
-    if (isNaN(duration) || duration <= 0) { alert('時間を入力してください'); return; }
-    currentSets.push({ exercise, type:'duration', duration, comment, id:Date.now() });
-    document.getElementById('duration-input').value = '';
   } else {
-    const weight = parseFloat(document.getElementById('weight-input').value);
-    const reps = parseInt(document.getElementById('reps-input').value);
-    if (!isBodyweight && (isNaN(weight)||weight<=0)) { alert('重量を入力するか「自重」を選択してください'); return; }
-    if (isNaN(reps)||reps<=0) { alert('回数を入力してください'); return; }
-    currentSets.push({ exercise, type:'strength', weight:isBodyweight?null:weight, bodyweight:isBodyweight, reps, equipment:currentEquipment, comment, id:Date.now() });
-    document.getElementById('reps-input').value = '';
-    document.getElementById('reps-input').focus();
+    const comment = document.getElementById('set-comment').value.trim() || null;
+    if (currentActivityType === 'cardio') {
+      const time = parseInt(document.getElementById('cardio-time').value) || null;
+      const distance = parseFloat(document.getElementById('cardio-distance').value) || null;
+      const calories = parseInt(document.getElementById('cardio-calories').value) || null;
+      if (!time && !distance) { alert('時間または距離を入力してください'); return; }
+      newSet = { exercise, type:'cardio', duration:time, distance, calories, comment, id:keepId };
+      ['cardio-time','cardio-distance','cardio-calories'].forEach(id=>document.getElementById(id).value='');
+    } else if (currentActivityType === 'duration') {
+      const duration = parseInt(document.getElementById('duration-input').value);
+      if (isNaN(duration) || duration <= 0) { alert('時間を入力してください'); return; }
+      newSet = { exercise, type:'duration', duration, comment, id:keepId };
+      document.getElementById('duration-input').value = '';
+    } else {
+      const weight = parseFloat(document.getElementById('weight-input').value);
+      const reps = parseInt(document.getElementById('reps-input').value);
+      if (!isBodyweight && (isNaN(weight)||weight<=0)) { alert('重量を入力するか「自重」を選択してください'); return; }
+      if (isNaN(reps)||reps<=0) { alert('回数を入力してください'); return; }
+      newSet = { exercise, type:'strength', weight:isBodyweight?null:weight, bodyweight:isBodyweight, reps, equipment:currentEquipment, comment, id:keepId };
+      document.getElementById('reps-input').value = '';
+    }
+    document.getElementById('set-comment').value = '';
   }
-  document.getElementById('set-comment').value = '';
+  if (editingSetId !== null) {
+    const idx = currentSets.findIndex(s=>s.id===editingSetId);
+    if (idx>=0) currentSets[idx]=newSet; else currentSets.push(newSet);
+    editingSetId=null;
+    document.querySelector('[onclick="addSet()"]').textContent='+ セットを追加';
+  } else {
+    currentSets.push(newSet);
+    if (newSet.type==='strength') { document.getElementById('reps-input').focus(); }
+  }
   addExerciseToList(exercise);
   renderTodaySets();
 }
-function removeSet(id) { currentSets=currentSets.filter(s=>s.id!==id); renderTodaySets(); }
+function removeSet(id) { currentSets=currentSets.filter(s=>s.id!==id); if(editingSetId===id){editingSetId=null;document.querySelector('[onclick="addSet()"]').textContent='+ セットを追加';} renderTodaySets(); }
+function editSet(id) {
+  const s=currentSets.find(s=>s.id===id);
+  if(!s)return;
+  editingSetId=id;
+  document.getElementById('exercise-input').value=s.exercise;
+  checkBodyPumpMode(s.exercise);
+  if(s.type==='bodypump'){
+    const sec=s.sections||{};
+    document.getElementById('bp-warmup').value=sec.warmup||'';
+    document.getElementById('bp-legs').value=sec.legs||'';
+    document.getElementById('bp-chest').value=sec.chest||'';
+    document.getElementById('bp-back').value=sec.back||'';
+  } else if(s.type==='cardio'){
+    setActivityType('cardio');
+    document.getElementById('cardio-time').value=s.duration||'';
+    document.getElementById('cardio-distance').value=s.distance||'';
+    document.getElementById('cardio-calories').value=s.calories||'';
+  } else if(s.type==='duration'){
+    setActivityType('duration');
+    document.getElementById('duration-input').value=s.duration||'';
+  } else {
+    setActivityType('strength');
+    isBodyweight=!!s.bodyweight;
+    const wi=document.getElementById('weight-input');
+    const btn=document.getElementById('bodyweight-btn');
+    if(s.bodyweight){wi.value='';wi.disabled=true;wi.style.opacity='0.4';btn.className='rounded-xl px-2 py-2.5 text-xs border border-blue-400 text-blue-600 bg-blue-50 whitespace-nowrap font-semibold';}
+    else{wi.value=s.weight||'';wi.disabled=false;wi.style.opacity='1';btn.className='rounded-xl px-2 py-2.5 text-xs border border-gray-200 text-gray-500 bg-gray-50 whitespace-nowrap';}
+    document.getElementById('reps-input').value=s.reps||'';
+    currentEquipment=s.equipment||null;updateEquipmentUI();
+  }
+  document.getElementById('set-comment').value=s.comment||'';
+  document.querySelector('[onclick="addSet()"]').textContent='✓ セットを更新';
+  updateRecordHint(s.exercise);
+  document.querySelector('.modal-sheet').scrollTo({top:0,behavior:'smooth'});
+}
 function setLabel(s) {
   if (s.type==='bodypump') {
     const sec=s.sections||{};
@@ -853,7 +899,8 @@ function renderTodaySets() {
           <div class="flex justify-between items-center">
             <span class="text-sm text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='bodypump'?'💪':s.type==='duration'?'':i+1+'セット目'}${equipBadge(s)}</span>
             <span class="text-sm font-medium text-gray-700">${setLabel(s)}</span>
-            <button onclick="removeSet(${s.id})" class="text-red-400 text-xs ml-2 py-1 px-2">✕</button>
+            <button onclick="editSet(${s.id})" class="text-blue-400 text-xs py-1 px-1">✏️</button>
+            <button onclick="removeSet(${s.id})" class="text-red-400 text-xs py-1 px-1">✕</button>
           </div>
           ${s.comment?`<div class="text-xs text-gray-400 mt-0.5 pl-0.5">💬 ${s.comment}</div>`:''}
         </div>
