@@ -1691,6 +1691,8 @@ function exportData() {
     templates: getData(TEMPLATES_KEY),
     exercises: getData(EXERCISES_KEY),
     hidden:    getData(HIDDEN_EXERCISES_KEY),
+    cloudKey:  localStorage.getItem(CLOUD_KEY_STORAGE) || null,
+    cloudBin:  localStorage.getItem(CLOUD_BIN_STORAGE) || null,
   };
   const json = JSON.stringify(backup, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -1722,9 +1724,14 @@ function importData(event) {
       // 種目リストはそのまま上書きマージ
       const exMerged = [...new Set([...getData(EXERCISES_KEY), ...(backup.exercises||[])])];
       setData(EXERCISES_KEY, exMerged);
-      const msg = `✅ インポート完了 — 筋トレ+${w}件・体組成+${b}件・テンプレ+${t}件`;
+      // クラウド設定も復元
+      let cloudMsg = '';
+      if (backup.cloudKey) { localStorage.setItem(CLOUD_KEY_STORAGE, backup.cloudKey); cloudMsg = '・☁️設定'; }
+      if (backup.cloudBin) { localStorage.setItem(CLOUD_BIN_STORAGE, backup.cloudBin); }
+      const msg = `✅ インポート完了 — 筋トレ+${w}件・体組成+${b}件・テンプレ+${t}件${cloudMsg}`;
       document.getElementById('backup-status').textContent = msg;
       showToast(msg);
+      initCloudStatus();
       renderCalendar(); renderStats(); renderHistory();
     } catch(err) {
       document.getElementById('backup-status').textContent = '❌ 読み込み失敗：' + err.message;
