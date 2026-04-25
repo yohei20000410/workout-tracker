@@ -463,6 +463,20 @@
       <div id="icon-status" class="text-xs text-gray-400 text-center"></div>
     </div>
     <div class="card p-4 mb-4">
+      <h3 class="text-sm font-semibold text-gray-600 mb-1">☁️ クラウド同期</h3>
+      <p class="text-xs text-gray-400 mb-3"><a href="https://jsonbin.io" target="_blank" class="text-blue-400 underline">jsonbin.io</a> の無料アカウントで自動同期。スマホ・PCのデータを統一できます。</p>
+      <div class="mb-2">
+        <label class="text-xs text-gray-400 mb-1 block">Master Key</label>
+        <input id="cloud-api-key" type="password" placeholder="$2a$10$..." class="w-full rounded-xl px-3 py-2 text-sm border outline-none" />
+      </div>
+      <button onclick="saveCloudKey()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold mb-2">接続する</button>
+      <div class="flex gap-2 mb-2">
+        <button onclick="syncToCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 アップロード</button>
+        <button onclick="syncFromCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50">📥 ダウンロード</button>
+      </div>
+      <div id="cloud-status" class="text-xs text-gray-400 text-center"></div>
+    </div>
+    <div class="card p-4 mb-4">
       <h3 class="text-sm font-semibold text-gray-600 mb-1">💾 バックアップ / 復元</h3>
       <p class="text-xs text-gray-400 mb-3">定期的にエクスポートしておくと安心です。</p>
       <div class="flex gap-2 mb-2">
@@ -524,6 +538,9 @@ const WORKOUTS_KEY = 'wt_workouts';
 const HIDDEN_EXERCISES_KEY = 'wt_hidden_exercises';
 const TEMPLATES_KEY = 'wt_templates';
 const BODY_KEY = 'wt_body';
+const CLOUD_KEY_STORAGE = 'wt_cloud_key';
+const CLOUD_BIN_STORAGE = 'wt_cloud_bin';
+const CLOUD_SYNCED_AT   = 'wt_cloud_synced_at';
 const DEFAULT_EXERCISES = ['ベンチプレス','スクワット','デッドリフト','ショルダープレス','懸垂','ローイング','アームカール','トライセプス','レッグプレス','ラットプルダウン'];
 const DAY_NAMES = ['日','月','火','水','木','金','土'];
 const EXERCISE_CATEGORIES = {
@@ -617,7 +634,7 @@ function showTab(tab) {
   if (tab === 'history') { selectedDate=null; checkHomeSchedule(); renderCalendar(); renderStats(); renderHistory(); }
   if (tab === 'chart') initChartTab();
   if (tab === 'template') { renderTemplateList(); renderScheduleList(); }
-  if (tab === 'settings') applyCustomIcon();
+  if (tab === 'settings') { applyCustomIcon(); initCloudStatus(); }
 }
 function openRecordModal(dateStr) {
   editingWorkoutId = null;
@@ -921,6 +938,7 @@ function saveWorkout() {
   }
   workouts.sort((a,b)=>a.date.localeCompare(b.date));
   setData(WORKOUTS_KEY, workouts);
+  syncToCloud();
   currentSets = [];
   renderTodaySets();
   ['exercise-input','weight-input','reps-input','duration-input','cardio-time','cardio-distance','cardio-calories','set-comment'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
@@ -1372,6 +1390,7 @@ function saveBodyData(){
   } else { body.push(record); }
   body.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   setData(BODY_KEY, body);
+  syncToCloud();
   // 保存確認：読み戻して件数チェック
   const savedCount = getData(BODY_KEY).length;
   ['body-weight','body-fat','body-fat-mass','body-muscle','body-skeletal','body-visceral','body-bmr','body-trunk','body-r-arm','body-l-arm','body-r-leg','body-l-leg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1540,6 +1559,102 @@ function resetIcon() {
   document.getElementById('icon-status').textContent = 'デフォルトに戻しました。ホーム画面から再追加すると反映されます。';
 }
 
+// ===== CLOUD SYNC =====
+function cloudAllData() {
+  return {
+    workouts:  getData(WORKOUTS_KEY),
+    body:      getData(BODY_KEY),
+    templates: getData(TEMPLATES_KEY),
+    exercises: getData(EXERCISES_KEY),
+    hidden:    getData(HIDDEN_EXERCISES_KEY),
+    syncedAt:  new Date().toISOString()
+  };
+}
+function setCloudStatus(msg) {
+  const el = document.getElementById('cloud-status');
+  if (el) el.textContent = msg;
+}
+function saveCloudKey() {
+  const key = document.getElementById('cloud-api-key').value.trim();
+  if (!key) { alert('Master Keyを入力してください'); return; }
+  localStorage.setItem(CLOUD_KEY_STORAGE, key);
+  showToast('APIキーを保存しました');
+  syncToCloud(true);
+}
+async function syncToCloud(manual=false) {
+  const key = localStorage.getItem(CLOUD_KEY_STORAGE);
+  if (!key) return;
+  const binId = localStorage.getItem(CLOUD_BIN_STORAGE);
+  if (manual) setCloudStatus('アップロード中...');
+  try {
+    let res;
+    if (binId) {
+      res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+        body: JSON.stringify(cloudAllData())
+      });
+    } else {
+      res = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': '筋トレ記録', 'X-Bin-Private': 'true' },
+        body: JSON.stringify(cloudAllData())
+      });
+      if (res.ok) {
+        const j = await res.json();
+        localStorage.setItem(CLOUD_BIN_STORAGE, j.metadata.id);
+      }
+    }
+    const now = new Date().toLocaleTimeString('ja-JP');
+    if (res.ok) {
+      localStorage.setItem(CLOUD_SYNCED_AT, new Date().toISOString());
+      setCloudStatus('✅ ' + now + ' に同期済み');
+      if (manual) showToast('☁️ クラウドに保存しました');
+    } else {
+      const err = await res.json().catch(()=>({}));
+      setCloudStatus('❌ 失敗: ' + (err.message||res.status));
+    }
+  } catch(e) { setCloudStatus('❌ エラー: ' + e.message); }
+}
+async function syncFromCloud(manual=false) {
+  const key   = localStorage.getItem(CLOUD_KEY_STORAGE);
+  const binId = localStorage.getItem(CLOUD_BIN_STORAGE);
+  if (!key) { if (manual) showToast('先にMaster Keyを入力して接続してください'); return; }
+  if (!binId) { if (manual) showToast('まずアップロードしてBinを作成してください'); return; }
+  if (manual) setCloudStatus('ダウンロード中...');
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { 'X-Master-Key': key }
+    });
+    if (!res.ok) { setCloudStatus('❌ 取得失敗: ' + res.status); return; }
+    const json = await res.json();
+    const d = json.record;
+    if (d.workouts)  setData(WORKOUTS_KEY, d.workouts);
+    if (d.body)      setData(BODY_KEY, d.body);
+    if (d.templates) setData(TEMPLATES_KEY, d.templates);
+    if (d.exercises) setData(EXERCISES_KEY, d.exercises);
+    if (d.hidden)    setData(HIDDEN_EXERCISES_KEY, d.hidden);
+    const now = new Date().toLocaleTimeString('ja-JP');
+    setCloudStatus('✅ ' + now + ' に取得済み');
+    if (manual) showToast('☁️ クラウドから復元しました');
+    renderCalendar(); renderStats(); renderHistory();
+  } catch(e) { setCloudStatus('❌ エラー: ' + e.message); }
+}
+function initCloudStatus() {
+  const key    = localStorage.getItem(CLOUD_KEY_STORAGE);
+  const binId  = localStorage.getItem(CLOUD_BIN_STORAGE);
+  const synced = localStorage.getItem(CLOUD_SYNCED_AT);
+  if (!key) { setCloudStatus('未接続'); return; }
+  const el = document.getElementById('cloud-api-key');
+  if (el) el.placeholder = '●●●●●●●● (設定済み)';
+  if (binId && synced) {
+    const t = new Date(synced).toLocaleString('ja-JP');
+    setCloudStatus('✅ 接続済み · 最終同期: ' + t);
+  } else if (key) {
+    setCloudStatus('接続済み（未同期）');
+  }
+}
+
 // ===== BACKUP =====
 function exportData() {
   const backup = {
@@ -1663,6 +1778,7 @@ initDefaultTemplates();
 applyCustomIcon();
 handleUrlParams();
 showTab('history');
+syncFromCloud();
 </script>
 </body>
 </html>
