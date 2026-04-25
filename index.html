@@ -542,8 +542,9 @@ function getExerciseCategory(name) {
 }
 
 // ===== STORAGE =====
-function getData(key) { try { const v=localStorage.getItem(key); return v?JSON.parse(v)||[]:[];} catch { return []; } }
-function setData(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { alert('保存に失敗しました（ストレージ容量不足の可能性）\n'+e.message); } }
+const _mem = {};
+function getData(key) { try { const v=localStorage.getItem(key); return v?JSON.parse(v)||[]:[];} catch { return _mem[key]||[]; } }
+function setData(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); _mem[key]=val; } catch(e) { _mem[key]=val; } }
 
 // ===== VOLUME =====
 function calcVolume(sets) {
@@ -597,7 +598,7 @@ function formatDate(dateStr) {
 
 // ===== QR =====
 function showQR() {
-  const url = window.location.href.split('?')[0];
+  const url = 'https://yohei20000410.github.io/workout-tracker/';
   document.getElementById('qr-url').textContent = url;
   document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
   document.getElementById('qr-modal').classList.remove('hidden');
