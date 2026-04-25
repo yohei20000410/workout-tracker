@@ -1597,7 +1597,7 @@ async function syncToCloud(manual=false) {
     } else {
       res = await fetch('https://api.jsonbin.io/v3/b', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': '筋トレ記録', 'X-Bin-Private': 'true' },
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'kintore-data', 'X-Bin-Private': 'true' },
         body: JSON.stringify(cloudAllData())
       });
       if (res.ok) {
