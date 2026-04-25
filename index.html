@@ -494,10 +494,20 @@
         <button onclick="exportData()" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 エクスポート</button>
         <label class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50 text-center cursor-pointer">
           📥 インポート
-          <input type="file" accept=".json" onchange="importData(event)" class="hidden" />
+          <input type="file" accept=".json,.txt,application/json,text/plain" onchange="importData(event)" class="hidden" />
         </label>
       </div>
       <div id="backup-status" class="text-xs text-gray-400 text-center"></div>
+      <div id="backup-text-area" class="hidden mt-3">
+        <p class="text-xs text-gray-500 mb-1">📋 ファイル保存できない場合はこれをコピー（長押し→すべて選択→コピー）</p>
+        <textarea id="backup-text" readonly class="w-full h-24 text-xs p-2 border rounded-lg bg-gray-50" style="font-family:monospace"></textarea>
+        <button onclick="copyBackupText()" class="mt-1 w-full py-2 rounded-xl text-xs font-semibold border border-blue-200 text-blue-500 bg-blue-50">📋 クリップボードにコピー</button>
+      </div>
+      <details class="mt-3">
+        <summary class="text-xs text-gray-500 cursor-pointer">📥 テキストから復元（ファイル選択できない時）</summary>
+        <textarea id="import-text" placeholder="バックアップJSONを貼り付け" class="w-full h-24 text-xs p-2 border rounded-lg mt-2" style="font-family:monospace"></textarea>
+        <button onclick="importFromText()" class="mt-1 w-full py-2 rounded-xl text-xs font-semibold border border-green-200 text-green-600 bg-green-50">📥 貼り付けたテキストから復元</button>
+      </details>
     </div>
   </div>
 
@@ -1696,14 +1706,17 @@ async function exportData() {
   };
   const json = JSON.stringify(backup, null, 2);
   const date = new Date().toISOString().slice(0,10);
-  const filename = `kintore-backup-${date}.json`;
-  const blob = new Blob([json], { type: 'application/json' });
-  const file = new File([blob], filename, { type: 'application/json' });
+  // iOSは .txt の方が「ファイルに保存」が確実に出る
+  const filename = `kintore-backup-${date}.txt`;
+  const blob = new Blob([json], { type: 'text/plain' });
+  const file = new File([blob], filename, { type: 'text/plain' });
   // iOS / mobile: 共有シートで「ファイルに保存」を選べる
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: '筋トレ記録バックアップ' });
       document.getElementById('backup-status').textContent = `✅ 共有シートを開きました（筋トレ${backup.workouts.length}件・体組成${backup.body.length}件）`;
+      // 念のためテキスト表示も出す（コピペ用フォールバック）
+      showBackupText(json);
       return;
     } catch(e) { if (e.name !== 'AbortError') console.error(e); }
   }
@@ -1713,6 +1726,29 @@ async function exportData() {
   a.href = url; a.download = filename;
   a.click(); URL.revokeObjectURL(url);
   document.getElementById('backup-status').textContent = `✅ エクスポート完了（筋トレ${backup.workouts.length}件・体組成${backup.body.length}件）`;
+  showBackupText(json);
+}
+function showBackupText(json) {
+  const area = document.getElementById('backup-text-area');
+  const ta = document.getElementById('backup-text');
+  if (area && ta) { ta.value = json; area.classList.remove('hidden'); }
+}
+async function copyBackupText() {
+  const ta = document.getElementById('backup-text');
+  if (!ta) return;
+  ta.select();
+  try { await navigator.clipboard.writeText(ta.value); document.getElementById('backup-status').textContent = '✅ クリップボードにコピーしました'; }
+  catch(e) { document.execCommand('copy'); }
+}
+function importFromText() {
+  const ta = document.getElementById('import-text');
+  if (!ta || !ta.value.trim()) return;
+  try {
+    const backup = JSON.parse(ta.value);
+    importBackupObject(backup);
+  } catch(e) {
+    document.getElementById('backup-status').textContent = '❌ JSONの解析に失敗: ' + e.message;
+  }
 }
 function importData(event) {
   const file = event.target.files[0];
@@ -1721,35 +1757,35 @@ function importData(event) {
   reader.onload = e => {
     try {
       const backup = JSON.parse(e.target.result);
-      // マージ（既存データと重複しないものを追加）
-      function mergeArray(key, existing, incoming, idField='date') {
-        const existingIds = new Set(existing.map(x => x[idField]));
-        const newItems = incoming.filter(x => !existingIds.has(x[idField]));
-        const merged = [...existing, ...newItems];
-        setData(key, merged);
-        return newItems.length;
-      }
-      const w = mergeArray(WORKOUTS_KEY,  getData(WORKOUTS_KEY),  backup.workouts  || []);
-      const b = mergeArray(BODY_KEY,      getData(BODY_KEY),      backup.body      || []);
-      const t = mergeArray(TEMPLATES_KEY, getData(TEMPLATES_KEY), backup.templates || [], 'id');
-      // 種目リストはそのまま上書きマージ
-      const exMerged = [...new Set([...getData(EXERCISES_KEY), ...(backup.exercises||[])])];
-      setData(EXERCISES_KEY, exMerged);
-      // クラウド設定も復元
-      let cloudMsg = '';
-      if (backup.cloudKey) { localStorage.setItem(CLOUD_KEY_STORAGE, backup.cloudKey); cloudMsg = '・☁️設定'; }
-      if (backup.cloudBin) { localStorage.setItem(CLOUD_BIN_STORAGE, backup.cloudBin); }
-      const msg = `✅ インポート完了 — 筋トレ+${w}件・体組成+${b}件・テンプレ+${t}件${cloudMsg}`;
-      document.getElementById('backup-status').textContent = msg;
-      showToast(msg);
-      initCloudStatus();
-      renderCalendar(); renderStats(); renderHistory();
+      importBackupObject(backup);
     } catch(err) {
       document.getElementById('backup-status').textContent = '❌ 読み込み失敗：' + err.message;
     }
     event.target.value = '';
   };
   reader.readAsText(file);
+}
+function importBackupObject(backup) {
+  function mergeArray(key, existing, incoming, idField='date') {
+    const existingIds = new Set(existing.map(x => x[idField]));
+    const newItems = incoming.filter(x => !existingIds.has(x[idField]));
+    const merged = [...existing, ...newItems];
+    setData(key, merged);
+    return newItems.length;
+  }
+  const w = mergeArray(WORKOUTS_KEY,  getData(WORKOUTS_KEY),  backup.workouts  || []);
+  const b = mergeArray(BODY_KEY,      getData(BODY_KEY),      backup.body      || []);
+  const t = mergeArray(TEMPLATES_KEY, getData(TEMPLATES_KEY), backup.templates || [], 'id');
+  const exMerged = [...new Set([...getData(EXERCISES_KEY), ...(backup.exercises||[])])];
+  setData(EXERCISES_KEY, exMerged);
+  let cloudMsg = '';
+  if (backup.cloudKey) { localStorage.setItem(CLOUD_KEY_STORAGE, backup.cloudKey); cloudMsg = '・☁️設定'; }
+  if (backup.cloudBin) { localStorage.setItem(CLOUD_BIN_STORAGE, backup.cloudBin); }
+  const msg = `✅ インポート完了 — 筋トレ+${w}件・体組成+${b}件・テンプレ+${t}件${cloudMsg}`;
+  document.getElementById('backup-status').textContent = msg;
+  showToast(msg);
+  initCloudStatus();
+  renderCalendar(); renderStats(); renderHistory();
 }
 
 // ===== TOAST =====
