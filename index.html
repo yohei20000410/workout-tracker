@@ -485,6 +485,7 @@
         <button onclick="syncToCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-blue-200 text-blue-500 bg-blue-50">📤 アップロード</button>
         <button onclick="syncFromCloud(true)" class="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-green-200 text-green-600 bg-green-50">📥 ダウンロード</button>
       </div>
+      <button onclick="openJsonBin()" class="w-full mb-2 py-2.5 rounded-xl text-sm font-semibold border border-purple-200 text-purple-500 bg-purple-50">🌐 JSONBinでデータを見る</button>
       <div id="cloud-status" class="text-xs text-gray-400 text-center"></div>
     </div>
     <div class="card p-4 mb-4">
@@ -1596,6 +1597,13 @@ function cloudAllData() {
 function setCloudStatus(msg) {
   const el = document.getElementById('cloud-status');
   if (el) el.textContent = msg;
+}
+function openJsonBin() {
+  const binId = localStorage.getItem(CLOUD_BIN_STORAGE);
+  const url = binId
+    ? `https://jsonbin.io/app/bins/${binId}`
+    : 'https://jsonbin.io/app/bins';
+  window.open(url, '_blank');
 }
 function openCloudModal() {
   const current = localStorage.getItem(CLOUD_KEY_STORAGE);
