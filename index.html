@@ -497,6 +497,8 @@
           <input type="file" accept=".json,.txt,application/json,text/plain" onchange="importData(event)" class="hidden" />
         </label>
       </div>
+      <button onclick="saveToFiles()" class="w-full mb-2 py-2.5 rounded-xl text-sm font-semibold border border-orange-200 text-orange-600 bg-orange-50">📂 Filesに保存（共有シート）</button>
+      <p class="text-[10px] text-gray-400 mb-2 leading-snug">※ クラウド同期が有効なら、保存・編集ごとに自動でJSONBinへバックアップされます（実質自動バックアップ）。Filesへの自動保存はiOSのセキュリティ制約で不可。</p>
       <div id="backup-status" class="text-xs text-gray-400 text-center"></div>
       <div id="backup-text-area" class="hidden mt-3">
         <p class="text-xs text-gray-500 mb-1">📋 ファイル保存できない場合はこれをコピー（長押し→すべて選択→コピー）</p>
@@ -1723,6 +1725,42 @@ async function exportData() {
   document.getElementById('backup-status').textContent =
     (copied ? '✅ クリップボードにコピー済み（PWAで貼り付け復元できます）' : '✅ 下のテキストを長押し→すべて選択→コピー')
     + ` — 筋トレ${backup.workouts.length}件・体組成${backup.body.length}件`;
+}
+async function saveToFiles() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    workouts:  getData(WORKOUTS_KEY),
+    body:      getData(BODY_KEY),
+    templates: getData(TEMPLATES_KEY),
+    exercises: getData(EXERCISES_KEY),
+    hidden:    getData(HIDDEN_EXERCISES_KEY),
+    cloudKey:  localStorage.getItem(CLOUD_KEY_STORAGE) || null,
+    cloudBin:  localStorage.getItem(CLOUD_BIN_STORAGE) || null,
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const date = new Date().toISOString().slice(0,10);
+  const filename = `kintore-backup-${date}.json`;
+  const blob = new Blob([json], { type: 'application/json' });
+  const file = new File([blob], filename, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: '筋トレ記録バックアップ' });
+      document.getElementById('backup-status').textContent = `✅ 共有シートを開きました — 「ファイルに保存」を選んでください`;
+      return;
+    } catch(e) {
+      if (e.name !== 'AbortError') {
+        document.getElementById('backup-status').textContent = '❌ 共有失敗: ' + e.message;
+      }
+      return;
+    }
+  }
+  // フォールバック：通常ダウンロード
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click(); URL.revokeObjectURL(url);
+  document.getElementById('backup-status').textContent = `✅ ダウンロードしました`;
 }
 function showBackupText(json) {
   const area = document.getElementById('backup-text-area');
