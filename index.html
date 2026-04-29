@@ -576,11 +576,32 @@ const EXERCISE_CATEGORIES = {
   '体幹': ['プランク','クランチ','レッグレイズ','ロシアンツイスト','ドラゴンフラッグ'],
   '有酸素': ['ランニング','ウォーキング','サイクリング','ピラティス','ボディーパンプ','HIIT','エリプティカル'],
 };
+const EXERCISE_CATEGORY_OVERRIDE_KEY = 'wt_exercise_categories';
+const ALL_CATEGORIES = ['胸','背中','肩','腕','脚','体幹','有酸素','その他'];
+function getCategoryOverrides() {
+  try { return JSON.parse(localStorage.getItem(EXERCISE_CATEGORY_OVERRIDE_KEY)) || {}; }
+  catch { return {}; }
+}
+function setCategoryOverride(name, cat) {
+  const map = getCategoryOverrides();
+  map[name] = cat;
+  try { localStorage.setItem(EXERCISE_CATEGORY_OVERRIDE_KEY, JSON.stringify(map)); } catch {}
+}
 function getExerciseCategory(name) {
+  const overrides = getCategoryOverrides();
+  if (overrides[name]) return overrides[name];
   for(const [cat, exs] of Object.entries(EXERCISE_CATEGORIES)) {
     if(exs.includes(name)) return cat;
   }
   return 'その他';
+}
+function cycleExerciseCategory(name) {
+  const cur = getExerciseCategory(name);
+  const idx = ALL_CATEGORIES.indexOf(cur);
+  const next = ALL_CATEGORIES[(idx+1) % ALL_CATEGORIES.length];
+  setCategoryOverride(name, next);
+  if (typeof syncToCloud==='function') syncToCloud();
+  renderQuickExercises();
 }
 
 // ===== STORAGE =====
@@ -772,9 +793,12 @@ function copyRecord(type) {
 function renderQuickExercises() {
   const exercises = getExercises();
   if (isEditingExercises) {
-    document.getElementById('quick-exercises').innerHTML = exercises.map(ex =>
-      `<span class="exercise-chip" style="padding-right:6px">${ex} <button onclick="deleteExercise('${ex}')" class="text-red-400 font-bold ml-1 text-sm">×</button></span>`
-    ).join('');
+    document.getElementById('quick-exercises').innerHTML =
+      `<p class="text-[10px] text-gray-400 mb-2">部位タグをタップで分類変更（タップごとに胸→背中→...と切替）</p>` +
+      exercises.map(ex => {
+        const cat = getExerciseCategory(ex);
+        return `<span class="exercise-chip" style="padding-right:6px">${ex} <button onclick="cycleExerciseCategory('${ex.replace(/'/g,"\\'")}')" class="text-purple-500 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5 text-[10px] ml-1">${cat}</button> <button onclick="deleteExercise('${ex.replace(/'/g,"\\'")}')" class="text-red-400 font-bold ml-1 text-sm">×</button></span>`;
+      }).join('');
     return;
   }
   // 部位別グループ化
@@ -1591,6 +1615,7 @@ function cloudAllData() {
     templates: getData(TEMPLATES_KEY),
     exercises: getData(EXERCISES_KEY),
     hidden:    getData(HIDDEN_EXERCISES_KEY),
+    categories: getCategoryOverrides(),
     syncedAt:  new Date().toISOString()
   };
 }
@@ -1676,6 +1701,7 @@ async function syncFromCloud(manual=false) {
     if (d.templates) setData(TEMPLATES_KEY, d.templates);
     if (d.exercises) setData(EXERCISES_KEY, d.exercises);
     if (d.hidden)    setData(HIDDEN_EXERCISES_KEY, d.hidden);
+    if (d.categories) try { localStorage.setItem(EXERCISE_CATEGORY_OVERRIDE_KEY, JSON.stringify(d.categories)); } catch {}
     const now = new Date().toLocaleTimeString('ja-JP');
     setCloudStatus('✅ ' + now + ' に取得済み');
     if (manual) showToast('☁️ クラウドから復元しました');
