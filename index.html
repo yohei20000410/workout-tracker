@@ -354,7 +354,7 @@
           <div class="flex gap-2">
             <button onclick="setMetric('maxWeight')" id="metric-maxWeight" class="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">最大重量</button>
             <button onclick="setMetric('totalVolume')" id="metric-totalVolume" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">総ボリューム</button>
-            <button onclick="setMetric('maxReps')" id="metric-maxReps" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">最大回数</button>
+            <button onclick="setMetric('oneRM')" id="metric-oneRM" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">1RM</button>
           </div>
         </div>
       </div>
@@ -536,6 +536,8 @@
 let currentSets = [];
 let exerciseChartInstance = null, volumeChartInstance = null, bodyChartInstance = null, correlChartInstance = null;
 let currentMetric = 'maxWeight';
+// 旧'maxReps'を選択していた場合の互換
+if (currentMetric==='maxReps') currentMetric='oneRM';
 let currentBodyMetric = 'weight';
 let currentCorrelMetric = 'muscle';
 let currentGraphSection = 'exercise';
@@ -975,7 +977,11 @@ function setLabel(s) {
     return parts.join(' · ');
   }
   if (s.type==='duration') return s.duration+'分';
-  return (s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回';
+  const base = (s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回';
+  if (!s.bodyweight && s.weight && s.reps) {
+    return base + ` <span style="color:#a855f7;font-weight:600;font-size:11px">1RM ${estimate1RM(s.weight,s.reps).toFixed(1)}kg</span>`;
+  }
+  return base;
 }
 function equipBadge(s) {
   if(s.type!=='strength'||!s.equipment) return '';
@@ -1366,7 +1372,7 @@ function renderHistory() {
                   <div class="flex justify-between text-xs">
                     <span class="text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='bodypump'?'💪':s.type==='duration'?'':i+1+'セット目'}${s.type==='strength'&&s.equipment?`<span class="ml-1 ${s.equipment==='machine'?'text-sky-500':'text-violet-500'}">${s.equipment==='machine'?'マシン':'FW'}</span>`:''}</span>
                     <span class="text-gray-700">${s.type==='bodypump'?setLabel(s):s.type==='cardio'?setLabel(s):s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
-                    <span class="text-gray-400">${s.type==='strength'&&!s.bodyweight&&s.weight&&s.reps?(s.weight*s.reps).toFixed(0)+'kg vol':''}</span>
+                    <span class="text-gray-400">${s.type==='strength'&&!s.bodyweight&&s.weight&&s.reps?`<span class="text-purple-500 font-semibold">1RM ${estimate1RM(s.weight,s.reps).toFixed(1)}kg</span>`:''}</span>
                   </div>
                   ${s.comment?`<div class="text-xs text-gray-400 mt-0.5">💬 ${s.comment}</div>`:''}
                 </div>`).join('')}
@@ -1426,11 +1432,16 @@ function initExerciseChart(){
   if(prev&&exercises.includes(prev))sel.value=prev;
   updateExerciseChart();
 }
+function estimate1RM(weight, reps) {
+  // O'Conner式: 1RM = weight × (1 + reps × 0.025)
+  if (!weight || !reps) return 0;
+  return weight * (1 + reps * 0.025);
+}
 function setMetric(metric){
   currentMetric=metric;
-  ['maxWeight','totalVolume','maxReps'].forEach(m=>{
+  ['maxWeight','totalVolume','oneRM'].forEach(m=>{
     const btn=document.getElementById(`metric-${m}`);
-    btn.className=m===metric?'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200':'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
+    if(btn)btn.className=m===metric?'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200':'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
   });
   updateExerciseChart();
 }
@@ -1449,10 +1460,11 @@ function updateExerciseChart(){
     if(isBP)return sets.reduce((a,s)=>a+bodypumpTotal(s.sections),0);
     if(currentMetric==='maxWeight')return sets.some(s=>s.bodyweight)?0:Math.max(...sets.map(s=>s.weight||0));
     if(currentMetric==='totalVolume')return sets.reduce((sum,s)=>sum+(s.bodyweight?0:(s.weight||0)*s.reps),0);
+    if(currentMetric==='oneRM')return Math.max(...sets.map(s=>s.bodyweight?0:estimate1RM(s.weight,s.reps)));
     return Math.max(...sets.map(s=>s.reps||0));
   });
-  const unit=isDuration?'分':currentMetric==='maxReps'?'rep':'kg';
-  const label=isDuration?'時間（分）':isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',maxReps:'最大回数 (rep)'}[currentMetric];
+  const unit=isDuration?'分':'kg';
+  const label=isDuration?'時間（分）':isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',oneRM:'推定1RM (kg)'}[currentMetric];
   const ctx=document.getElementById('exercise-chart').getContext('2d');
   if(exerciseChartInstance)exerciseChartInstance.destroy();
   exerciseChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.1)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3}]},options:{responsive:true,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
