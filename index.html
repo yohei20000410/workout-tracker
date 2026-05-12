@@ -359,7 +359,18 @@
         </div>
       </div>
       <div class="card p-4 mb-4"><canvas id="exercise-chart" height="220"></canvas></div>
-      <div id="exercise-chart-stats" class="grid grid-cols-3 gap-3"></div>
+      <div id="exercise-chart-stats" class="grid grid-cols-3 gap-3 mb-4"></div>
+      <div class="card p-4 mb-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-sm font-semibold text-gray-700">🏆 全種目 PR一覧</h3>
+          <select id="pr-sort" onchange="renderPRList()" class="text-xs rounded-lg px-2 py-1 border outline-none">
+            <option value="oneRM">1RM順</option>
+            <option value="maxWeight">最大重量順</option>
+            <option value="name">種目名順</option>
+          </select>
+        </div>
+        <div id="pr-list"></div>
+      </div>
     </div>
 
     <!-- 負荷量 -->
@@ -1431,6 +1442,56 @@ function initExerciseChart(){
   sel.innerHTML=exercises.length===0?'<option value="">記録がありません</option>':exercises.map(ex=>`<option value="${ex}">${ex}</option>`).join('');
   if(prev&&exercises.includes(prev))sel.value=prev;
   updateExerciseChart();
+  renderPRList();
+}
+function renderPRList() {
+  const el = document.getElementById('pr-list');
+  if (!el) return;
+  const workouts = getData(WORKOUTS_KEY);
+  const map = {}; // exercise -> {maxWeight, maxWeightReps, maxOneRM, maxOneRMset:{w,r}}
+  workouts.forEach(w => {
+    w.sets.forEach(s => {
+      if (s.type !== 'strength' || s.bodyweight || !s.weight || !s.reps) return;
+      const ex = s.exercise;
+      if (!map[ex]) map[ex] = { name:ex, maxWeight:0, maxWeightReps:0, maxOneRM:0, oneRMw:0, oneRMr:0, oneRMdate:null, maxWeightDate:null };
+      if (s.weight > map[ex].maxWeight) {
+        map[ex].maxWeight = s.weight;
+        map[ex].maxWeightReps = s.reps;
+        map[ex].maxWeightDate = w.date;
+      }
+      const one = estimate1RM(s.weight, s.reps);
+      if (one > map[ex].maxOneRM) {
+        map[ex].maxOneRM = one;
+        map[ex].oneRMw = s.weight;
+        map[ex].oneRMr = s.reps;
+        map[ex].oneRMdate = w.date;
+      }
+    });
+  });
+  const list = Object.values(map);
+  if (list.length === 0) { el.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">記録がありません</p>'; return; }
+  const sort = document.getElementById('pr-sort').value;
+  if (sort === 'maxWeight') list.sort((a,b)=>b.maxWeight-a.maxWeight);
+  else if (sort === 'name')  list.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+  else                       list.sort((a,b)=>b.maxOneRM-a.maxOneRM);
+  el.innerHTML = `
+    <div class="grid grid-cols-12 gap-1 text-[10px] text-gray-400 font-semibold mb-1 px-1">
+      <div class="col-span-5">種目</div>
+      <div class="col-span-3 text-right">最大重量</div>
+      <div class="col-span-4 text-right">推定1RM</div>
+    </div>
+    ` + list.map(r => `
+      <div class="grid grid-cols-12 gap-1 text-xs items-center py-1.5 border-b border-gray-100">
+        <div class="col-span-5 font-medium text-gray-700 truncate">${r.name}</div>
+        <div class="col-span-3 text-right">
+          <span class="font-semibold text-blue-500">${r.maxWeight}kg</span>
+          <span class="text-[10px] text-gray-400 block">×${r.maxWeightReps}</span>
+        </div>
+        <div class="col-span-4 text-right">
+          <span class="font-semibold text-purple-500">${r.maxOneRM.toFixed(1)}kg</span>
+          <span class="text-[10px] text-gray-400 block">${r.oneRMw}×${r.oneRMr}</span>
+        </div>
+      </div>`).join('');
 }
 function estimate1RM(weight, reps) {
   // O'Conner式: 1RM = weight × (1 + reps × 0.025)
