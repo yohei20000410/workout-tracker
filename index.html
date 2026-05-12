@@ -2020,6 +2020,10 @@ function importBackupObject(backup) {
   showToast(msg);
   initCloudStatus();
   renderCalendar(); renderStats(); renderHistory();
+  // クラウドへ自動アップロード
+  if (typeof syncToCloud === 'function' && localStorage.getItem(CLOUD_KEY_STORAGE)) {
+    setTimeout(() => syncToCloud(true), 500);
+  }
 }
 
 // ===== TOAST =====
