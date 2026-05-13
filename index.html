@@ -358,7 +358,12 @@
           </div>
         </div>
       </div>
-      <div class="card p-4 mb-4"><canvas id="exercise-chart" height="220"></canvas></div>
+      <div class="card p-4 mb-4">
+        <div id="exercise-chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <div id="exercise-chart-wrap" style="position:relative;height:220px"><canvas id="exercise-chart"></canvas></div>
+        </div>
+        <p class="text-[10px] text-gray-400 text-center mt-1">← 左右にスクロールできます →</p>
+      </div>
       <div id="exercise-chart-stats" class="grid grid-cols-3 gap-3 mb-4"></div>
       <div class="card p-4 mb-4">
         <div class="flex justify-between items-center mb-2">
@@ -380,7 +385,12 @@
         <button onclick="setVolumeRange('year')" id="vr-year" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">今年</button>
         <button onclick="setVolumeRange('all')" id="vr-all" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">全期間</button>
       </div>
-      <div class="card p-4 mb-4"><canvas id="volume-chart" height="220"></canvas></div>
+      <div class="card p-4 mb-4">
+        <div id="volume-chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <div id="volume-chart-wrap" style="position:relative;height:220px"><canvas id="volume-chart"></canvas></div>
+        </div>
+        <p class="text-[10px] text-gray-400 text-center mt-1">← 左右にスクロールできます →</p>
+      </div>
       <div id="volume-stats" class="grid grid-cols-3 gap-2 mb-4"></div>
     </div>
 
@@ -450,7 +460,12 @@
           <button onclick="setCorrelMetric('weight')" id="cm-weight" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">体重</button>
         </div>
       </div>
-      <div class="card p-4 mb-4"><canvas id="correlation-chart" height="250"></canvas></div>
+      <div class="card p-4 mb-4">
+        <div id="correlation-chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <div id="correlation-chart-wrap" style="position:relative;height:250px"><canvas id="correlation-chart"></canvas></div>
+        </div>
+        <p class="text-[10px] text-gray-400 text-center mt-1">← 左右にスクロールできます →</p>
+      </div>
       <div id="correlation-note" class="text-center text-xs text-gray-400 mb-4"></div>
     </div>
   </div>
@@ -1534,7 +1549,13 @@ function updateExerciseChart(){
   const label=isDuration?'時間（分）':isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',oneRM:'推定1RM (kg)'}[currentMetric];
   const ctx=document.getElementById('exercise-chart').getContext('2d');
   if(exerciseChartInstance)exerciseChartInstance.destroy();
-  exerciseChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.1)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3}]},options:{responsive:true,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
+  const exWrap=document.getElementById('exercise-chart-wrap');
+  const exScroll=document.getElementById('exercise-chart-scroll');
+  const exContainerW=exScroll.clientWidth||300;
+  const exChartW=Math.max(exContainerW, labels.length*50);
+  exWrap.style.width=exChartW+'px';
+  exerciseChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.1)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
+  setTimeout(()=>{exScroll.scrollLeft=exChartW;},50);
   if(values.length>0){
     const max=Math.max(...values),latest=values[values.length-1],diff=latest-values[0];
     document.getElementById('exercise-chart-stats').innerHTML=`
@@ -1574,7 +1595,13 @@ function initVolumeChart(){
   const values=months.map(m=>calcMonthlyVolume(m.year,m.month));
   const ctx=document.getElementById('volume-chart').getContext('2d');
   if(volumeChartInstance)volumeChartInstance.destroy();
-  volumeChartInstance=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月間負荷量 (kg)',data:values,backgroundColor:'rgba(249,115,22,0.7)',borderColor:'#f97316',borderRadius:6,borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11},maxRotation:45},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(1)+'t':v+'kg'},grid:{color:'#f1f5f9'}}}}});
+  const volWrap=document.getElementById('volume-chart-wrap');
+  const volScroll=document.getElementById('volume-chart-scroll');
+  const volContainerW=volScroll.clientWidth||300;
+  const volChartW=Math.max(volContainerW, labels.length*50);
+  volWrap.style.width=volChartW+'px';
+  volumeChartInstance=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月間負荷量 (kg)',data:values,backgroundColor:'rgba(249,115,22,0.7)',borderColor:'#f97316',borderRadius:6,borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11},maxRotation:45},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11},callback:v=>v>=1000?(v/1000).toFixed(1)+'t':v+'kg'},grid:{color:'#f1f5f9'}}}}});
+  setTimeout(()=>{volScroll.scrollLeft=volChartW;},50);
   const total=values.reduce((a,b)=>a+b,0);
   const best=Math.max(...values);
   const avg=values.filter(v=>v>0).length>0?total/values.filter(v=>v>0).length:0;
@@ -1724,14 +1751,20 @@ function initCorrelationChart(){
   const bodyColors={muscle:'#10b981',fat:'#ef4444',weight:'#3b82f6'};
   const ctx=document.getElementById('correlation-chart').getContext('2d');
   if(correlChartInstance)correlChartInstance.destroy();
+  const corWrap=document.getElementById('correlation-chart-wrap');
+  const corScroll=document.getElementById('correlation-chart-scroll');
+  const corContainerW=corScroll.clientWidth||300;
+  const corChartW=Math.max(corContainerW, labels.length*60);
+  corWrap.style.width=corChartW+'px';
   correlChartInstance=new Chart(ctx,{type:'bar',data:{labels,datasets:[
     {label:'月間負荷量 (kg)',data:volVals,backgroundColor:'rgba(249,115,22,0.5)',borderColor:'#f97316',borderRadius:4,yAxisID:'y'},
     {label:bodyLabels[currentCorrelMetric],data:bodyVals,type:'line',borderColor:bodyColors[currentCorrelMetric],backgroundColor:'transparent',pointBackgroundColor:bodyColors[currentCorrelMetric],pointRadius:5,tension:0.3,yAxisID:'y1'}
-  ]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#64748b',font:{size:11}}}},scales:{
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#64748b',font:{size:11}}}},scales:{
     x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},
     y:{type:'linear',position:'left',ticks:{color:'#f97316',font:{size:10}},grid:{color:'#f1f5f9'},title:{display:true,text:'負荷量',color:'#f97316',font:{size:10}}},
     y1:{type:'linear',position:'right',ticks:{color:bodyColors[currentCorrelMetric],font:{size:10}},grid:{drawOnChartArea:false},title:{display:true,text:bodyLabels[currentCorrelMetric],color:bodyColors[currentCorrelMetric],font:{size:10}}}
   }}});
+  setTimeout(()=>{corScroll.scrollLeft=corChartW;},50);
 }
 
 // ===== INIT =====
