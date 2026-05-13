@@ -428,7 +428,12 @@
         <button onclick="setBodyMetric('skeletal')" id="bm-skeletal" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">筋肉率</button>
         <button onclick="setBodyMetric('bmr')" id="bm-bmr" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">基礎代謝</button>
       </div>
-      <div class="card p-4 mb-4"><canvas id="body-chart" height="200"></canvas></div>
+      <div class="card p-4 mb-4">
+        <div id="body-chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <div id="body-chart-wrap" style="position:relative;height:220px"><canvas id="body-chart"></canvas></div>
+        </div>
+        <p class="text-[10px] text-gray-400 text-center mt-1">← 左右にスクロールできます →</p>
+      </div>
       <div id="body-history" class="mb-4"></div>
     </div>
 
@@ -1636,7 +1641,19 @@ function drawBodyChart(){
   const ctx=document.getElementById('body-chart').getContext('2d');
   if(bodyChartInstance)bodyChartInstance.destroy();
   if(filtered.length===0){bodyChartInstance=null;return;}
-  bodyChartInstance=new Chart(ctx,{type:'line',data:{datasets:[{label:labelNames[currentBodyMetric],data:points,borderColor:colors[currentBodyMetric].border,backgroundColor:colors[currentBodyMetric].bg,pointBackgroundColor:colors[currentBodyMetric].border,pointRadius:5,fill:true,tension:0.3,parsing:false}]},options:{responsive:true,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}},tooltip:{callbacks:{title:items=>{const d=new Date(items[0].parsed.x);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;}}}},scales:{x:{type:'linear',ticks:{color:'#94a3b8',font:{size:11},maxTicksLimit:6,callback:v=>{const d=new Date(v);return `${d.getMonth()+1}/${d.getDate()}`;}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
+  // 1日あたりの幅(px)。最低でもscrollコンテナ幅を確保
+  const wrap=document.getElementById('body-chart-wrap');
+  const scrollEl=document.getElementById('body-chart-scroll');
+  const dayMs=86400000;
+  const firstX=points[0].x, lastX=points[points.length-1].x;
+  const dayCount=Math.max(1,Math.round((lastX-firstX)/dayMs)+1);
+  const pxPerDay=20;
+  const containerW=scrollEl.clientWidth||300;
+  const chartW=Math.max(containerW, dayCount*pxPerDay);
+  wrap.style.width=chartW+'px';
+  bodyChartInstance=new Chart(ctx,{type:'line',data:{datasets:[{label:labelNames[currentBodyMetric],data:points,borderColor:colors[currentBodyMetric].border,backgroundColor:colors[currentBodyMetric].bg,pointBackgroundColor:colors[currentBodyMetric].border,pointRadius:5,fill:true,tension:0.3,parsing:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}},tooltip:{callbacks:{title:items=>{const d=new Date(items[0].parsed.x);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;}}}},scales:{x:{type:'linear',ticks:{color:'#94a3b8',font:{size:11},maxTicksLimit:Math.ceil(chartW/60),callback:v=>{const d=new Date(v);return `${d.getMonth()+1}/${d.getDate()}`;}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
+  // 最新データが見えるよう右端へスクロール
+  setTimeout(()=>{scrollEl.scrollLeft=chartW;},50);
 }
 function renderBodyHistory(){
   const body=getData(BODY_KEY);
