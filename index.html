@@ -661,7 +661,8 @@ function todayStr() {
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   const today = todayStr();
-  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yesterday = `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`;
   if (dateStr === today) return '今日';
   if (dateStr === yesterday) return '昨日';
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`;
