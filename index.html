@@ -1535,18 +1535,33 @@ function updateExerciseChart(){
   const isDuration=firstSet?.type==='duration';
   const isBP=firstSet?.type==='bodypump';
   document.getElementById('chart-metric-section').style.display=(isDuration||isBP)?'none':'block';
-  const labels=workouts.map(w=>{const d=new Date(w.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
-  const values=workouts.map(w=>{
-    const sets=w.sets.filter(s=>s.exercise===exercise);
-    if(isDuration)return sets.reduce((a,s)=>a+s.duration,0);
-    if(isBP)return sets.reduce((a,s)=>a+bodypumpTotal(s.sections),0);
-    if(currentMetric==='maxWeight')return sets.some(s=>s.bodyweight)?0:Math.max(...sets.map(s=>s.weight||0));
-    if(currentMetric==='totalVolume')return sets.reduce((sum,s)=>sum+(s.bodyweight?0:(s.weight||0)*s.reps),0);
-    if(currentMetric==='oneRM')return Math.max(...sets.map(s=>s.bodyweight?0:estimate1RM(s.weight,s.reps)));
-    return Math.max(...sets.map(s=>s.reps||0));
-  });
-  const unit=isDuration?'分':'kg';
-  const label=isDuration?'時間（分）':isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',oneRM:'推定1RM (kg)'}[currentMetric];
+  let labels, values, unit, label;
+  if (isDuration) {
+    // 月別実施回数を集計
+    const byMonth={};
+    workouts.forEach(w=>{
+      const ym=w.date.slice(0,7);
+      const cnt=w.sets.filter(s=>s.exercise===exercise).length;
+      byMonth[ym]=(byMonth[ym]||0)+cnt;
+    });
+    const ymList=Object.keys(byMonth).sort();
+    labels=ymList.map(ym=>{const [y,m]=ym.split('-');return `${parseInt(m)}月`;});
+    values=ymList.map(ym=>byMonth[ym]);
+    unit='回';
+    label='月別実施回数';
+  } else {
+    labels=workouts.map(w=>{const d=new Date(w.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
+    values=workouts.map(w=>{
+      const sets=w.sets.filter(s=>s.exercise===exercise);
+      if(isBP)return sets.reduce((a,s)=>a+bodypumpTotal(s.sections),0);
+      if(currentMetric==='maxWeight')return sets.some(s=>s.bodyweight)?0:Math.max(...sets.map(s=>s.weight||0));
+      if(currentMetric==='totalVolume')return sets.reduce((sum,s)=>sum+(s.bodyweight?0:(s.weight||0)*s.reps),0);
+      if(currentMetric==='oneRM')return Math.max(...sets.map(s=>s.bodyweight?0:estimate1RM(s.weight,s.reps)));
+      return Math.max(...sets.map(s=>s.reps||0));
+    });
+    unit='kg';
+    label=isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',oneRM:'推定1RM (kg)'}[currentMetric];
+  }
   const ctx=document.getElementById('exercise-chart').getContext('2d');
   if(exerciseChartInstance)exerciseChartInstance.destroy();
   const exWrap=document.getElementById('exercise-chart-wrap');
@@ -1554,14 +1569,26 @@ function updateExerciseChart(){
   const exContainerW=exScroll.clientWidth||300;
   const exChartW=Math.max(exContainerW, labels.length*50);
   exWrap.style.width=exChartW+'px';
-  exerciseChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.1)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}}}}});
+  const chartType=isDuration?'bar':'line';
+  exerciseChartInstance=new Chart(ctx,{type:chartType,data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.6)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3,borderRadius:isDuration?6:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{beginAtZero:isDuration,ticks:{color:'#94a3b8',font:{size:11},stepSize:isDuration?1:undefined},grid:{color:'#f1f5f9'}}}}});
   setTimeout(()=>{exScroll.scrollLeft=exChartW;},50);
   if(values.length>0){
-    const max=Math.max(...values),latest=values[values.length-1],diff=latest-values[0];
-    document.getElementById('exercise-chart-stats').innerHTML=`
-      <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${max}${unit}</div><div class="text-xs text-gray-400 mt-1">最高記録</div></div>
-      <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}${unit}</div><div class="text-xs text-gray-400 mt-1">直近</div></div>
-      <div class="card p-3 text-center"><div class="text-lg font-bold ${diff>=0?'text-green-500':'text-red-400'}">${diff>=0?'+':''}${diff.toFixed(1)}${unit}</div><div class="text-xs text-gray-400 mt-1">初回比</div></div>`;
+    if (isDuration) {
+      const total=values.reduce((a,b)=>a+b,0);
+      const max=Math.max(...values);
+      const latest=values[values.length-1];
+      const avg=(total/values.length).toFixed(1);
+      document.getElementById('exercise-chart-stats').innerHTML=`
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-green-500">${total}回</div><div class="text-xs text-gray-400 mt-1">累計実施</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}回</div><div class="text-xs text-gray-400 mt-1">今月</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${avg}回</div><div class="text-xs text-gray-400 mt-1">月平均</div></div>`;
+    } else {
+      const max=Math.max(...values),latest=values[values.length-1],diff=latest-values[0];
+      document.getElementById('exercise-chart-stats').innerHTML=`
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${max}${unit}</div><div class="text-xs text-gray-400 mt-1">最高記録</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}${unit}</div><div class="text-xs text-gray-400 mt-1">直近</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold ${diff>=0?'text-green-500':'text-red-400'}">${diff>=0?'+':''}${diff.toFixed(1)}${unit}</div><div class="text-xs text-gray-400 mt-1">初回比</div></div>`;
+    }
   } else{document.getElementById('exercise-chart-stats').innerHTML='';}
 }
 
