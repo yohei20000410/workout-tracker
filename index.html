@@ -1635,7 +1635,7 @@ function updateExerciseChart(){
   if (useTimeAxis && points && points.length>0) {
     const dayMs=86400000;
     const dayCount=Math.max(1,Math.round((points[points.length-1].x-points[0].x)/dayMs)+1);
-    exChartW=Math.max(exContainerW, dayCount*15);
+    exChartW=Math.max(exContainerW, dayCount*7);
   } else {
     exChartW=Math.max(exContainerW, labels.length*50);
   }
