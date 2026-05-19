@@ -357,6 +357,14 @@
             <button onclick="setMetric('oneRM')" id="metric-oneRM" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">1RM</button>
           </div>
         </div>
+        <div id="chart-cardio-section" class="hidden">
+          <label class="text-xs text-gray-400 mb-1 block">指標</label>
+          <div class="flex gap-2">
+            <button onclick="setCardioMetric('distance')" id="cardio-distance-btn" class="flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">距離 (km)</button>
+            <button onclick="setCardioMetric('duration')" id="cardio-duration-btn" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">時間 (分)</button>
+            <button onclick="setCardioMetric('calories')" id="cardio-calories-btn" class="flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">カロリー</button>
+          </div>
+        </div>
       </div>
       <div class="card p-4 mb-4">
         <div id="exercise-chart-scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
@@ -1527,6 +1535,15 @@ function setMetric(metric){
   });
   updateExerciseChart();
 }
+let currentCardioMetric='distance';
+function setCardioMetric(metric){
+  currentCardioMetric=metric;
+  ['distance','duration','calories'].forEach(m=>{
+    const btn=document.getElementById(`cardio-${m}-btn`);
+    if(btn)btn.className=m===metric?'flex-1 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200':'flex-1 py-2 rounded-lg text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200';
+  });
+  updateExerciseChart();
+}
 function updateExerciseChart(){
   const exercise=document.getElementById('chart-exercise').value;
   if(!exercise)return;
@@ -1534,9 +1551,20 @@ function updateExerciseChart(){
   const firstSet=workouts.length>0?workouts[0].sets.find(s=>s.exercise===exercise):null;
   const isDuration=firstSet?.type==='duration';
   const isBP=firstSet?.type==='bodypump';
-  document.getElementById('chart-metric-section').style.display=(isDuration||isBP)?'none':'block';
+  const isCardio=firstSet?.type==='cardio';
+  document.getElementById('chart-metric-section').style.display=(isDuration||isBP||isCardio)?'none':'block';
+  document.getElementById('chart-cardio-section').classList.toggle('hidden',!isCardio);
   let labels, values, unit, label;
-  if (isDuration) {
+  if (isCardio) {
+    labels=workouts.map(w=>{const d=new Date(w.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
+    const cm=currentCardioMetric;
+    values=workouts.map(w=>{
+      const sets=w.sets.filter(s=>s.exercise===exercise);
+      return sets.reduce((a,s)=>a+(s[cm]||0),0);
+    });
+    unit=cm==='distance'?'km':cm==='duration'?'分':'kcal';
+    label=cm==='distance'?'距離 (km)':cm==='duration'?'時間 (分)':'消費カロリー (kcal)';
+  } else if (isDuration) {
     // 月別実施回数を集計
     const byMonth={};
     workouts.forEach(w=>{
@@ -1582,6 +1610,14 @@ function updateExerciseChart(){
         <div class="card p-3 text-center"><div class="text-lg font-bold text-green-500">${total}回</div><div class="text-xs text-gray-400 mt-1">累計実施</div></div>
         <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}回</div><div class="text-xs text-gray-400 mt-1">今月</div></div>
         <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${avg}回</div><div class="text-xs text-gray-400 mt-1">月平均</div></div>`;
+    } else if (isCardio) {
+      const total=values.reduce((a,b)=>a+b,0);
+      const max=Math.max(...values);
+      const latest=values[values.length-1];
+      document.getElementById('exercise-chart-stats').innerHTML=`
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-blue-500">${total.toFixed(1)}${unit}</div><div class="text-xs text-gray-400 mt-1">累計</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-gray-800">${latest}${unit}</div><div class="text-xs text-gray-400 mt-1">直近</div></div>
+        <div class="card p-3 text-center"><div class="text-lg font-bold text-green-500">${max}${unit}</div><div class="text-xs text-gray-400 mt-1">最高</div></div>`;
     } else {
       const max=Math.max(...values),latest=values[values.length-1],diff=latest-values[0];
       document.getElementById('exercise-chart-stats').innerHTML=`
