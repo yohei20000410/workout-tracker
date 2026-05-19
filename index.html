@@ -12,6 +12,7 @@
   <link rel="apple-touch-icon" href="icon-192-v2.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     body { background: #f1f5f9; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -1963,18 +1964,26 @@ async function syncToCloud(manual=false) {
   const binId = localStorage.getItem(CLOUD_BIN_STORAGE);
   if (manual) setCloudStatus('アップロード中...');
   try {
+    // データを圧縮して保存（JSONBin無料枠100KB対策）
+    let payload;
+    try {
+      const raw = JSON.stringify(cloudAllData());
+      payload = JSON.stringify({ _lz: LZString.compressToBase64(raw) });
+    } catch(e) {
+      payload = JSON.stringify(cloudAllData());
+    }
     let res;
     if (binId) {
       res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
-        body: JSON.stringify(cloudAllData())
+        body: payload
       });
     } else {
       res = await fetch('https://api.jsonbin.io/v3/b', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Name': 'kintore-data', 'X-Bin-Private': 'true' },
-        body: JSON.stringify(cloudAllData())
+        body: payload
       });
       if (res.ok) {
         const j = await res.json();
@@ -2004,7 +2013,12 @@ async function syncFromCloud(manual=false) {
     });
     if (!res.ok) { setCloudStatus('❌ 取得失敗: ' + res.status); return; }
     const json = await res.json();
-    const d = json.record;
+    let d = json.record;
+    // 圧縮データなら展開
+    if (d && d._lz) {
+      try { d = JSON.parse(LZString.decompressFromBase64(d._lz)); }
+      catch(e) { setCloudStatus('❌ 展開失敗: ' + e.message); return; }
+    }
     if (d.workouts)  setData(WORKOUTS_KEY, d.workouts);
     if (d.body)      setData(BODY_KEY, d.body);
     if (d.templates) setData(TEMPLATES_KEY, d.templates);
