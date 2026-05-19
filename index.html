@@ -272,10 +272,12 @@
 
   <!-- 日付詳細モーダル -->
   <div id="day-modal" class="hidden modal-overlay" onclick="if(event.target===this)hideDayModal()">
-    <div class="modal-sheet">
+    <div class="modal-sheet" id="day-modal-sheet">
       <div class="flex justify-between items-center mb-4">
-        <h3 id="day-modal-title" class="font-bold text-gray-800"></h3>
-        <button onclick="hideDayModal()" class="text-gray-400 text-lg">✕</button>
+        <button id="day-prev-btn" onclick="navigateDayModal(-1)" class="text-blue-500 text-xl px-2 disabled:opacity-20">‹</button>
+        <h3 id="day-modal-title" class="font-bold text-gray-800 flex-1 text-center"></h3>
+        <button id="day-next-btn" onclick="navigateDayModal(1)" class="text-blue-500 text-xl px-2 disabled:opacity-20">›</button>
+        <button onclick="hideDayModal()" class="text-gray-400 text-lg ml-2">✕</button>
       </div>
       <div id="day-modal-content" class="mb-4"></div>
       <button id="day-modal-add-btn" onclick="" class="btn-primary w-full py-3 rounded-xl text-sm font-semibold">＋ この日に記録を追加</button>
@@ -1362,6 +1364,27 @@ function showDayModal(dateStr){
   }
   document.getElementById('day-modal-add-btn').setAttribute('onclick',`addRecordForDate('${dateStr}')`);
   document.getElementById('day-modal').classList.remove('hidden');
+  // 前後ナビゲーション設定
+  window._dayModalDate = dateStr;
+  const dates = [...new Set(getData(WORKOUTS_KEY).map(w=>w.date))].sort();
+  window._dayModalDates = dates;
+  const idx = dates.indexOf(dateStr);
+  const prevBtn = document.getElementById('day-prev-btn');
+  const nextBtn = document.getElementById('day-next-btn');
+  // 古い方向(前)＝より過去の記録日, 新しい方向(次)＝より新しい記録日
+  prevBtn.disabled = !(idx > 0);
+  nextBtn.disabled = !(idx >= 0 && idx < dates.length-1);
+  prevBtn.style.visibility = prevBtn.disabled ? 'hidden' : 'visible';
+  nextBtn.style.visibility = nextBtn.disabled ? 'hidden' : 'visible';
+}
+function navigateDayModal(dir){
+  const dates = window._dayModalDates || [];
+  const cur = window._dayModalDate;
+  const idx = dates.indexOf(cur);
+  if (idx < 0) return;
+  const nextIdx = idx + dir;
+  if (nextIdx < 0 || nextIdx >= dates.length) return;
+  showDayModal(dates[nextIdx]);
 }
 function hideDayModal(){document.getElementById('day-modal').classList.add('hidden');}
 function addRecordForDate(dateStr){
@@ -2217,6 +2240,29 @@ document.addEventListener('touchend', e => {
     e.target.focus();
   }
 }, true);
+// 日別モーダルのスワイプで前後の記録日へ移動
+(function(){
+  const sheet = document.getElementById('day-modal-sheet');
+  if (!sheet) return;
+  let startX = 0, startY = 0, tracking = false;
+  sheet.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+  sheet.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // 横スワイプ判定（縦より横が大きく、一定距離以上）
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      // 左スワイプ(dx<0)=次の(新しい)記録, 右スワイプ(dx>0)=前の(古い)記録
+      navigateDayModal(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>
