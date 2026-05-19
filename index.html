@@ -1351,14 +1351,20 @@ function showDayModal(dateStr){
       w.sets.forEach(s=>{if(!grouped[s.exercise])grouped[s.exercise]=[];grouped[s.exercise].push(s);});
       const vol=calcVolume(w.sets);
       return `<div class="card p-3 mb-2">
-        <div class="flex flex-wrap gap-1 mb-1">${Object.entries(grouped).map(([ex,sets])=>{
-          const isDur=sets[0].type==='duration';
-          const isCardio=sets[0].type==='cardio';
-          const isBP=sets[0].type==='bodypump';
-          const val=isBP?setLabel(sets[0]):isCardio?[sets[0].duration?sets[0].duration+'分':null,sets[0].distance?sets[0].distance+'km':null].filter(Boolean).join(' '):isDur?sets.reduce((a,s)=>a+s.duration,0)+'分':(sets.some(s=>s.bodyweight)?'自重':Math.max(...sets.map(s=>s.weight||0))+'kg');
-          return `<span class="text-xs text-gray-700">${ex} <span class="${isBP?'text-purple-500':isCardio?'text-orange-500':isDur?'text-green-500':'text-blue-500'} font-medium">${val}</span></span>`;
-        }).join('<span class="text-gray-300 mx-1">·</span>')}</div>
-        ${vol>0?`<div class="text-xs text-orange-400">負荷量: ${vol.toLocaleString()}kg</div>`:''}
+        ${vol>0?`<div class="text-xs text-orange-500 font-medium mb-2">負荷量: ${vol.toLocaleString()}kg</div>`:''}
+        ${Object.entries(grouped).map(([ex,sets])=>`
+          <div class="mb-3">
+            <div class="text-sm font-semibold text-blue-500 mb-1">${ex}</div>
+            ${sets.map((s,i)=>`
+              <div class="set-row">
+                <div class="flex justify-between text-xs">
+                  <span class="text-gray-400 flex items-center">${s.type==='cardio'?'🏃':s.type==='bodypump'?'💪':s.type==='duration'?'時間':i+1+'セット目'}${s.type==='strength'&&s.equipment?`<span class="ml-1 ${s.equipment==='machine'?'text-sky-500':'text-violet-500'}">${s.equipment==='machine'?'マシン':'FW'}</span>`:''}</span>
+                  <span class="text-gray-700">${s.type==='bodypump'?setLabel(s):s.type==='cardio'?setLabel(s):s.type==='duration'?s.duration+'分':(s.bodyweight?'自重':s.weight+'kg')+' × '+s.reps+'回'}</span>
+                  <span class="text-gray-400">${s.type==='strength'&&!s.bodyweight&&s.weight&&s.reps?`<span class="text-purple-500 font-semibold">1RM ${estimate1RM(s.weight,s.reps).toFixed(1)}kg</span>`:''}</span>
+                </div>
+                ${s.comment?`<div class="text-xs text-gray-400 mt-0.5">💬 ${s.comment}</div>`:''}
+              </div>`).join('')}
+          </div>`).join('')}
       </div>`;
     }).join('');
   }
