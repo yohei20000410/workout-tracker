@@ -1586,14 +1586,15 @@ function updateExerciseChart(){
   const isCardio=firstSet?.type==='cardio';
   document.getElementById('chart-metric-section').style.display=(isDuration||isBP||isCardio)?'none':'block';
   document.getElementById('chart-cardio-section').classList.toggle('hidden',!isCardio);
-  let labels, values, unit, label;
+  let labels, values, unit, label, points=null, useTimeAxis=false;
   if (isCardio) {
-    labels=workouts.map(w=>{const d=new Date(w.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
     const cm=currentCardioMetric;
-    values=workouts.map(w=>{
+    points=workouts.map(w=>{
       const sets=w.sets.filter(s=>s.exercise===exercise);
-      return sets.reduce((a,s)=>a+(s[cm]||0),0);
+      return {x:new Date(w.date+'T00:00:00').getTime(), y:sets.reduce((a,s)=>a+(s[cm]||0),0)};
     });
+    values=points.map(p=>p.y);
+    useTimeAxis=true;
     unit=cm==='distance'?'km':cm==='duration'?'分':'kcal';
     label=cm==='distance'?'距離 (km)':cm==='duration'?'時間 (分)':'消費カロリー (kcal)';
   } else if (isDuration) {
@@ -1610,15 +1611,18 @@ function updateExerciseChart(){
     unit='回';
     label='月別実施回数';
   } else {
-    labels=workouts.map(w=>{const d=new Date(w.date+'T00:00:00');return `${d.getMonth()+1}/${d.getDate()}`;});
-    values=workouts.map(w=>{
+    points=workouts.map(w=>{
       const sets=w.sets.filter(s=>s.exercise===exercise);
-      if(isBP)return sets.reduce((a,s)=>a+bodypumpTotal(s.sections),0);
-      if(currentMetric==='maxWeight')return sets.some(s=>s.bodyweight)?0:Math.max(...sets.map(s=>s.weight||0));
-      if(currentMetric==='totalVolume')return sets.reduce((sum,s)=>sum+(s.bodyweight?0:(s.weight||0)*s.reps),0);
-      if(currentMetric==='oneRM')return Math.max(...sets.map(s=>s.bodyweight?0:estimate1RM(s.weight,s.reps)));
-      return Math.max(...sets.map(s=>s.reps||0));
+      let y;
+      if(isBP)y=sets.reduce((a,s)=>a+bodypumpTotal(s.sections),0);
+      else if(currentMetric==='maxWeight')y=sets.some(s=>s.bodyweight)?0:Math.max(...sets.map(s=>s.weight||0));
+      else if(currentMetric==='totalVolume')y=sets.reduce((sum,s)=>sum+(s.bodyweight?0:(s.weight||0)*s.reps),0);
+      else if(currentMetric==='oneRM')y=Math.max(...sets.map(s=>s.bodyweight?0:estimate1RM(s.weight,s.reps)));
+      else y=Math.max(...sets.map(s=>s.reps||0));
+      return {x:new Date(w.date+'T00:00:00').getTime(), y};
     });
+    values=points.map(p=>p.y);
+    useTimeAxis=true;
     unit='kg';
     label=isBP?'💪 ボディーパンプ 総重量 (kg)':{maxWeight:'最大重量 (kg)',totalVolume:'総ボリューム (kg)',oneRM:'推定1RM (kg)'}[currentMetric];
   }
@@ -1627,10 +1631,25 @@ function updateExerciseChart(){
   const exWrap=document.getElementById('exercise-chart-wrap');
   const exScroll=document.getElementById('exercise-chart-scroll');
   const exContainerW=exScroll.clientWidth||300;
-  const exChartW=Math.max(exContainerW, labels.length*50);
+  let exChartW;
+  if (useTimeAxis && points && points.length>0) {
+    const dayMs=86400000;
+    const dayCount=Math.max(1,Math.round((points[points.length-1].x-points[0].x)/dayMs)+1);
+    exChartW=Math.max(exContainerW, dayCount*15);
+  } else {
+    exChartW=Math.max(exContainerW, labels.length*50);
+  }
   exWrap.style.width=exChartW+'px';
   const chartType=isDuration?'bar':'line';
-  exerciseChartInstance=new Chart(ctx,{type:chartType,data:{labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.6)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3,borderRadius:isDuration?6:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}},y:{beginAtZero:isDuration,ticks:{color:'#94a3b8',font:{size:11},stepSize:isDuration?1:undefined},grid:{color:'#f1f5f9'}}}}});
+  let chartData, xScale;
+  if (useTimeAxis) {
+    chartData={datasets:[{label,data:points,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',pointBackgroundColor:'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3,parsing:false}]};
+    xScale={type:'linear',ticks:{color:'#94a3b8',font:{size:11},maxTicksLimit:Math.ceil(exChartW/60),callback:v=>{const d=new Date(v);return `${d.getMonth()+1}/${d.getDate()}`;}},grid:{color:'#f1f5f9'}};
+  } else {
+    chartData={labels,datasets:[{label,data:values,borderColor:isDuration?'#10b981':'#3b82f6',backgroundColor:isDuration?'rgba(16,185,129,0.6)':'rgba(59,130,246,0.1)',pointBackgroundColor:isDuration?'#10b981':'#3b82f6',pointRadius:5,pointHoverRadius:7,fill:true,tension:0.3,borderRadius:isDuration?6:0}]};
+    xScale={ticks:{color:'#94a3b8',font:{size:11}},grid:{color:'#f1f5f9'}};
+  }
+  exerciseChartInstance=new Chart(ctx,{type:chartType,data:chartData,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:12}}},tooltip:useTimeAxis?{callbacks:{title:items=>{const d=new Date(items[0].parsed.x);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;}}}:{}},scales:{x:xScale,y:{beginAtZero:isDuration,ticks:{color:'#94a3b8',font:{size:11},stepSize:isDuration?1:undefined},grid:{color:'#f1f5f9'}}}}});
   setTimeout(()=>{exScroll.scrollLeft=exChartW;},50);
   if(values.length>0){
     if (isDuration) {
